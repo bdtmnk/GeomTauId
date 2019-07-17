@@ -2,15 +2,16 @@
 # Written by Owen Colegrove
 # This class is responsible for overseeing training batch preparation
 # For a better understanding of the code structure, refer to "Trainer.py"
+# Edited by Leonid Didukh
+
 from glob import glob
-import ROOT as r
+import uproot
 import numpy as np
 import root_numpy as rn
 # from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
 from random import randint
 from EventFiller import EventFiller
-import pandas as pd
 
 
 class Utilities():
@@ -43,7 +44,6 @@ class Utilities():
         W_train[Y == 0] = W_train[Y == 0] * len(W_train) * .5 / np.sum(W_train[Y == 0])
         W_train[Y == 1] = W_train[Y == 1] * len(W_train) * .5 / np.sum(W_train[Y == 1])
 
-        # print "Printing max,min,mean of signal weights"
         # print np.max(W_train[Y == 0]),np.min(W_train[Y == 0]),np.mean(W_train[Y == 0])
         return W_train
 
@@ -62,33 +62,27 @@ class Utilities():
                 evt = np.vstack((zeros, evt))
             except Exception:
                 continue
-            # print "evt shape", evt.shape
             X_pfs.append(evt)
             Y.append(int(levent['lepTauMatch_1']))
             Z.append(int(levent['lepRecoPt_1']))
 	   
             MVA.append(np.array([levent['lepMVAIso_1'], int(levent['decayMode_1']), int(levent['lepMuMatch_1']),
                                  int(levent['lepEleMatch_1']), levent['lepTauMatch_1'], 1-levent['lepTauMatch_1']]))
-            #print("MVA shape:", MVA.shape)
         return np.array(X_pfs), np.array(Y), np.array(Z), np.array(MVA)
 
     # Load a specific root file into a processed array
     def LoadFile(self, in_file, start, stop):
         X_pfs, X_mva, Y, Z, MVA = [], [], [], [], []
-        f = r.TFile.Open(in_file)
+        f = uproot.open(in_file)
         try:
-            t = f.Get("Candidates")
+            t = f["Candidates"]
         except:
             return [], [], [], [], []
-        arr = pd.DataFrame(rn.tree2array(t, start=start, stop=stop))
-#	arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
-	#print(arr.head(2)) 
-       #print("df.shape: ", arr.shape)
+        arr = t.pandas.df(entrystop=stop, entrystart=start)
+
         #try:
         X_pfs, Y, Z, MVA = self.RootToArr(arr, X_pfs, X_mva, Y, Z, MVA)
         #except Exception:
-        #    print(in_file)
-        #    print(in_file)
 
         return np.array(X_pfs), np.array(Y), np.array(Z), np.array(MVA)
 
@@ -99,14 +93,17 @@ class Utilities():
         """
         X_1, Y, Z, MVA = [], [], [], []
         #try:
-        f = r.TFile.Open(file)
-        t = f.Get("Candidates")
-        start = 0#randint(0, t.GetEntries() - nEvents)
+        f = uproot.open(file)
+        t = f["Candidates"]
+        nEvents = t['decayMode_1'].array().shape[0]
+        # arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
+        #
+        start = randint(0, t.GetEntries() - nEvents)
         if nEvents is None:
             stop = start+t.GetEntries()
         else:
             stop = start+nEvents
-        print(start, stop)
+        del t, f
         if (len(X_1) == 0):
             X_1, Y, Z, MVA = self.LoadFile(file, start, stop)
         else:
@@ -116,19 +113,21 @@ class Utilities():
             Z = np.append(Z, Zt)
             MVA = np.vstack((MVA, MVAt))
         #except Exception:
-        #    print("File: ", file)
-        #    return np.array(X_1), np.array(Y), np.array(Z), np.array(MVA)
         return np.array(X_1), np.array(Y), np.array(Z), np.array(MVA)
 
     # Build a dataset from a list of files, loading each into an array and appending the results
-    def BuildDataset(self, list_of_files, nEvents=5000):
+    def BuildDataset(self, list_of_files, nEvents=50):
         X_1, Y, Z, MVA = [], [], [], []
         for infile in list_of_files:
             try:
-                f = r.TFile.Open(infile)
-                t = f.Get("Candidates")
-                start = randint(0, t.GetEntries() - nEvents)
+                f = uproot.open(infile)
+                t = f["Candidates"]
+                tot_nEvents = t['decayMode_1'].array().shape[0]
+                # arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
+                #
+                start = randint(0, tot_nEvents - nEvents)
                 stop = start + nEvents
+                del t,f
                 if (len(X_1) == 0):
                     X_1, Y, Z, MVA = self.LoadFile(infile, start, stop)
                 else:
@@ -138,19 +137,16 @@ class Utilities():
                     Z = np.append(Z, Zt)
                     MVA = np.vstack((MVA, MVAt))
             except Exception:
-                print("File: ", infile)
                 continue
         return np.array(X_1), np.array(Y), np.array(Z), np.array(MVA)
 
     # Build a training batch with a taget directory, using specified number of processes and files.
-    def BuildBatch(self, indir='/beegfs/desy/user/dydukhle/TauId/new_train_samples/*.root', nProcs=5, nFiles=10, nEvents=5000):
+    def BuildBatch(self, indir='/beegfs/desy/user/dydukhle/TauId/new_train_samples/*.root', nProcs=5, nFiles=4, nEvents=50):
         file_list = glob(indir)
         np.random.shuffle(file_list)
         pool = ThreadPool(processes=nProcs)
         poolblock = []
         for p in np.arange(0, nProcs * nFiles, nFiles):
-	    for f in file_list[p:p + nFiles]:
-		print(f.split("/")[-1])
             poolblock.append(pool.apply_async(self.BuildDataset, (file_list[p:p + nFiles],nEvents)))
             X_1, Y, Z, MVA = [], [], [], []
         for res in poolblock:
@@ -166,7 +162,6 @@ class Utilities():
                         Z = np.append(Z, Zt)
                         MVA = np.vstack((MVA, MVAt))
             except:
-                #print "Error"
                 continue
 
         pool.close()

@@ -91,7 +91,6 @@ class EventFiller:
         if np.min(evt) == np.nan:
             return [0] * maxCands
         if np.abs(np.max(evt)) == np.inf:
-            #print np.argmax(evt), np.argmax(evt[np.argmax(evt)])
             return [0] * maxCands
 
         return evt

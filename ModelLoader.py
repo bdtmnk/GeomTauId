@@ -75,7 +75,7 @@ class ModelLoader:
     opt = Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     final.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy',auc])
     self.final = final
-    plot_model(final, 'conv1d.png')
+#    plot_model(final, 'conv1d.png')
     return final
 
   def load_multiclass(self, ouput_class=3,  loss='categorical_crossentropy',weights=None):
