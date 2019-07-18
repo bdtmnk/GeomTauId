@@ -25,8 +25,10 @@ class ModelLoader:
     model = Conv1D(1024,kernel_size=4,padding="same")(modelinshape)
     model = LeakyReLU(alpha=0.01)(model)
 
-    model = Conv1D(1024,kernel_size=4,padding="same")(modelinshape)
+    model = Conv1D(1024,kernel_size=4,padding="same")(model)
     model = LeakyReLU(alpha=0.01)(model)
+
+    model = BatchNormalization()(model)
 
     model = Conv1D(512,kernel_size=4,padding="same")(model)
     model = LeakyReLU(alpha=0.01)(model)
@@ -35,6 +37,8 @@ class ModelLoader:
     model = MaxPooling1D()(model)
     model = LeakyReLU(alpha=0.01)(model)
 
+    model = BatchNormalization()(model)
+
     model = Conv1D(256,kernel_size=3,padding="same")(model)
     model = LeakyReLU(alpha=0.01)(model)
 
@@ -42,12 +46,16 @@ class ModelLoader:
     model = MaxPooling1D()(model)
     model = LeakyReLU(alpha=0.01)(model)
 
+    model = BatchNormalization()(model)
+
     model = Conv1D(64,kernel_size=3,padding="same")(model)
     model = LeakyReLU(alpha=0.01)(model)
 
     model = Conv1D(64,kernel_size=3,padding="same")(model)
     model = MaxPooling1D()(model)
     model = LeakyReLU(alpha=0.01)(model)
+
+    model = BatchNormalization()(model)
 
     model = Conv1D(16,kernel_size=2,padding="same")(model)
     model = LeakyReLU(alpha=0.01)(model)
@@ -75,7 +83,7 @@ class ModelLoader:
     opt = Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     final.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy',auc])
     self.final = final
-    plot_model(final, 'conv1d.png')
+    plot_model(final, 'conv1d.svg')
     return final
 
   def load_multiclass(self, ouput_class=3,  loss='categorical_crossentropy',weights=None):

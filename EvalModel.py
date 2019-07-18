@@ -52,8 +52,8 @@ def load_model(config, epoch=0, model=None):
     return model
 
 if __name__ == "__main__":
-    if not os.path.exists("{2}/ResultsClassFilter/".format(config.get("model", "dir"))):
-        os.mkdir("{2}/ResultsClassFilter/".format(config.get("model", "dir")))
+    if not os.path.exists("{0}/ResultsClassFilter/".format(config.get("model", "dir"))):
+        os.mkdir("{0}/ResultsClassFilter/".format(config.get("model", "dir")))
     # Specify number of particles to use and number of features
     nParticles=60
     print("Start")

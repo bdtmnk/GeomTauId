@@ -20,6 +20,7 @@ from glob import glob
 from History.utils import Histories
 import ConfigParser
 import argparse
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='config.ini',
@@ -85,9 +86,13 @@ if __name__ == "__main__":
   history.on_train_begin()
   # Build the first training dataset
   print("TRAIN_DATA: ", TRAIN_DATA)
-  X_train, Y, W_train, MVA_train = utils.BuildBatch(indir=TRAIN_DATA)
+  X_train, Y, W_train, MVA_train = utils.BuildBatch(indir=TRAIN_DATA, nEvents=100)
 
-  for epoch in range(1000):
+  log_name = "time.log"
+  log = open(log_name, 'w')
+  start_time = time.clock()
+
+  for epoch in range(15):
     pool_local = ThreadPool(processes=1)
     # Shuffle loaded datasets and begin
     inds = range(len(X_train))
@@ -101,7 +106,8 @@ if __name__ == "__main__":
 
     ##Save the validation:
     history.set_mode(mode="train")
-    model.fit(X_epoch, Y_epoch,batch_size=4*1024, epochs=1, verbose=1,sample_weight = W_epoch)
+
+    model.fit(X_epoch, Y_epoch, batch_size=1000, epochs=1, verbose=1,sample_weight = W_epoch)
 
     ##Save shape and Datasets to results
     #pd.DataFrame(X_epoch).to_csv("X_example.csv", index=False)
@@ -121,6 +127,8 @@ if __name__ == "__main__":
       df_label.to_csv("{1}/labels_train_e_{0}.csv".format(epoch, TRAINING_RES), index=False)
       df_mva = pd.DataFrame({'mva_train_e_{0}'.format(epoch):[i for i in MVA_epoch]})
       df_mva.to_csv("{1}/labels_mva_e_{0}.csv".format(epoch, TRAINING_RES), index=False)
-    X_train,Y,W_train, MVA = utils.BuildBatch(indir=TRAIN_DATA)
+    X_train,Y,W_train, MVA = utils.BuildBatch(indir=TRAIN_DATA, nEvents=100)
 
-
+    epoch_time = time.clock() - start_time
+    log.write("Epoch: {0}; Time: {1} s".format(epoch, epoch_time))
+  log.close()

@@ -23,6 +23,6 @@
 #
 #Used to set the env and go to working dir
 #Replace with own pathes
-cd /nfs/dust/cms/user/dydukhle/CMSSW_10_2_5/src; 
+cd /afs/desy.de/user/b/bukinkir/CMSSW_10_2_14/src; 
 eval `scramv1 runtime -sh` ;
-cd /nfs/dust/cms/user/dydukhle/TauID/DPF_Training
+cd /afs/desy.de/user/b/bukinkir/GeomTauId

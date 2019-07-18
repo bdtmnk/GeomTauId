@@ -81,7 +81,12 @@ class Utilities():
         except:
             return [], [], [], [], []
         arr = pd.DataFrame(rn.tree2array(t, start=start, stop=stop))
-#	arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
+        #arr = pd.DataFrame(rn.tree2array(t))
+	if "DY" in in_file:
+            arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
+        elif "WJ" in in_file:
+            arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
+	#arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
 	#print(arr.head(2)) 
        #print("df.shape: ", arr.shape)
         #try:
