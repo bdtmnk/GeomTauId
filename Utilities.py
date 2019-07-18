@@ -80,12 +80,13 @@ class Utilities():
             t = f.Get("Candidates")
         except:
             return [], [], [], [], []
-        arr = pd.DataFrame(rn.tree2array(t, start=start, stop=stop))
-        #arr = pd.DataFrame(rn.tree2array(t))
+        #arr = pd.DataFrame(rn.tree2array(t, start=start, stop=stop))
+        arr = pd.DataFrame(rn.tree2array(t))
 	if "DY" in in_file:
             arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
         elif "WJ" in in_file:
             arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
+	arr = arr[start:stop]
 	#arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
 	#print(arr.head(2)) 
        #print("df.shape: ", arr.shape)
@@ -132,7 +133,13 @@ class Utilities():
             try:
                 f = r.TFile.Open(infile)
                 t = f.Get("Candidates")
-                start = randint(0, t.GetEntries() - nEvents)
+                arr = pd.DataFrame(rn.tree2array(t))
+            	if "DY" in infile:
+                    arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
+       		elif "WJ" in infile:
+            	    arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
+                start = randint(0, len(arr.index) - nEvents)
+		print(start)
                 stop = start + nEvents
                 if (len(X_1) == 0):
                     X_1, Y, Z, MVA = self.LoadFile(infile, start, stop)
