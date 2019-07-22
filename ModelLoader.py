@@ -79,7 +79,7 @@ class ModelLoader:
 
     final = Model(inputs=modelinshape,outputs=model)
     csv_logger = keras.callbacks.CSVLogger('CNNMCValid.log')
-    lr = 0.001
+    lr = 0.0001
     opt = Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     final.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy',auc])
     self.final = final

@@ -22,6 +22,8 @@ import ConfigParser
 import os
 from keras.models import model_from_json
 from keras.optimizers import Adam
+from ModelLoader import auc
+import matplotlib.pyplot as plt
 
 #####   Parse config:    #####
 config = ConfigParser.RawConfigParser()
@@ -42,14 +44,29 @@ def load_model(config, epoch=0, model=None):
         loaded_model_json = json_file.read()
         json_file.close()
         model = model_from_json(loaded_model_json)
-    	print("Builded from json")
-    else:
-    	# load weights into new model
-	print(dir + "/" + model_name + "W_{0}.h5".format(epoch))    
-	model.load_weights(dir + "/" + model_name + "W_{0}.h5".format(epoch))
+        print("Builded from json")
+    print(dir + "/" + model_name + "W_{0}.h5".format(epoch))
+    model.load_weights(dir + "/" + model_name + "W_{0}.h5".format(epoch))
     print("Loaded model from disk")
-    #model.compile(loss='binary_crossentropy', metrics=['accuracy'], optimizer=Adam(lr=0.01))
+    opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    model.compile(loss='binary_crossentropy', metrics=['accuracy', auc], optimizer=opt)
     return model
+
+
+def print_roc(label, pred, path ):
+
+    fpr, tpr, thresholds = skmetrics.roc_curve(label, pred)
+    plt.figure()
+    plt.plot(tpr, fpr, color='red')
+    plt.plot([0, 1], [0, 1], color='black', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('True Positive')
+    plt.ylabel('False Positive')
+    # plt.legend()
+    plt.title('Inverted ROC')
+    plt.savefig(path + 'ROC_CNN.pdf')
+    return
 
 if __name__ == "__main__":
     if not os.path.exists("{0}/ResultsClassFilter/".format(config.get("model", "dir"))):
@@ -74,7 +91,7 @@ if __name__ == "__main__":
 
     print("Sample", Samples)
     for sample in Samples:
-	
+
         print(sample)
         X_valid,Y_valid,_, MVA = utils.BuildValidationDataset(sample, None)
         #print("MVA:", MVA.shape)
@@ -84,16 +101,16 @@ if __name__ == "__main__":
         #del df_valid
         predict = model.predict(X_valid, batch_size=1000)
         #print(predict)
-        df_predict = pd.DataFrame({"valid_pred":[i[0] for i in predict ],
-                                   'labels_valid':[i for i in Y_valid],
-                                   'mva':[i[0] for i in MVA],
+        df_predict = pd.DataFrame({"valid_pred": [i[0] for i in predict ],
+                                   'labels_valid': [i for i in Y_valid],
+                                   'mva': [i[0] for i in MVA],
                                    'decay_mode': [i[1] for i in MVA],
                                    'mu_match': [i[2] for i in MVA],
                                    'el_match': [i[3] for i in MVA],
                                    'tau_match': [i[4] for i in MVA]
                                    })
         df_predict.to_csv("{2}/ResultsClassFilter/{1}_{0}.csv".format(epoch, sample.split("/")[-1], config.get("model","dir")), index=False)
-
+        #print_roc(df_predict.labels_valid, df_predict.valid_pred, "{0}/".format(config.get("model", "dir")))
    
 
 

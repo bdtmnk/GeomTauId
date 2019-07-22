@@ -25,4 +25,4 @@
 #Replace with own pathes
 cd /afs/desy.de/user/b/bukinkir/CMSSW_10_2_14/src; 
 eval `scramv1 runtime -sh` ;
-cd /afs/desy.de/user/b/bukinkir/GeomTauId
+cd /nfs/dust/cms/user/bukinkir/GeomTauId

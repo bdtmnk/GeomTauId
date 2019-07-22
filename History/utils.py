@@ -7,9 +7,11 @@ from sklearn.metrics import roc_auc_score
 from sklearn.utils import shuffle
 import  keras
 import keras.backend as K
-from sklearn.metrics import  accuracy_score, log_loss
+from sklearn.metrics import  accuracy_score, log_loss, precision_score, recall_score
 import os
 import numpy as np
+
+
 class Histories(keras.callbacks.Callback):
     """
 
@@ -22,7 +24,6 @@ class Histories(keras.callbacks.Callback):
         """
         self.config=config
         return
-
 
     def set_mode(self, mode="train"):
         """
@@ -38,8 +39,6 @@ class Histories(keras.callbacks.Callback):
 
         return
 
-
-
     def set_up_train_weight(self, weight):
         """
 
@@ -49,7 +48,6 @@ class Histories(keras.callbacks.Callback):
         self.train_weight = weight
         return
 
-
     def set_up_val_weight(self, weight):
         """
 
@@ -57,7 +55,6 @@ class Histories(keras.callbacks.Callback):
         :return:
         """
         self.val_weight = weight
-
 
     def on_train_begin(self, logs={}):
         """
@@ -69,9 +66,9 @@ class Histories(keras.callbacks.Callback):
         self.aucs = {'train':[], 'val':[]}
         self.losses = {'train':[], 'val':[]}
         self.acc = {'train':[], 'val':[]}
+	self.prec = {'train':[], 'val':[]}
+	self.rec = {'train':[], 'val':[]}
         self.lr = []
-
-
 
     def on_train_end(self, logs={}):
         """
@@ -90,11 +87,9 @@ class Histories(keras.callbacks.Callback):
         self.store_history()
         return
 
-
     def on_epoch_begin(self, epoch, logs={}):
 
         return
-
 
     def on_epoch_end(self, df_label, df_pred):
         """
@@ -125,6 +120,15 @@ class Histories(keras.callbacks.Callback):
 
         #self.aucs['val'].append(roc_auc_score(self.validation_data[1], y_pred))
 
+        #Precision
+
+        self.prec['train'].append(precision_score(df_label, df_pred))
+        print(precision_score(df_label, df_pred))
+
+        #Recall
+        self.rec['train'].append(recall_score(df_label, df_pred))
+        print(recall_score(df_label, df_pred))
+
         ##Balance Rate:
         #self.aucs['BR'].append(BalanceRate(df_label, y_pred))
 
@@ -141,14 +145,11 @@ class Histories(keras.callbacks.Callback):
 
         return
 
+    def on_batch_begin(self, batch, logs={}):
+        return
 
-	def on_batch_begin(self, batch, logs={}):
-		return
-
-
-	def on_batch_end(self, batch, logs={}):
-		return
-
+    def on_batch_end(self, batch, logs={}):
+        return
 
     def store_history(self):
         """
@@ -162,6 +163,8 @@ class Histories(keras.callbacks.Callback):
         #df['test_accuracy'] = self.acc['val']
         #df['test_loss'] = self.losses['val']
         _df['train_auc'] = np.array(self.aucs['train'])
+        _df['train_precision'] = np.array(self.prec['train'])
+        _df['train_recall'] = np.array(self.rec['train'])
         df = pd.DataFrame(_df)
 
         #df['lr'] = self.lr
@@ -174,7 +177,6 @@ class Histories(keras.callbacks.Callback):
         else:
             df.to_csv(dir + '/' + model_name+  'history.csv', index=False)
         return
-
 
 
 def _overbalance(train):
@@ -192,7 +194,6 @@ def _overbalance(train):
     df_over = pd.concat([df_class_0, df_class_1_over], axis=0)
     df_over = shuffle(df_over)
     return df_over
-
 
 
 def get_results(model, _x_train, _y_train, x_test, y_test, _w_train, w_test):

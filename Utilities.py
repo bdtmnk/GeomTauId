@@ -82,14 +82,17 @@ class Utilities():
             return [], [], [], [], []
         #arr = pd.DataFrame(rn.tree2array(t, start=start, stop=stop))
         arr = pd.DataFrame(rn.tree2array(t))
-	if "DY" in in_file:
+        if "DY" in in_file:
             arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
         elif "WJ" in in_file:
             arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
-	arr = arr[start:stop]
-	#arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
-	#print(arr.head(2)) 
-       #print("df.shape: ", arr.shape)
+        if stop <= len(arr.index):
+            arr = arr[start:stop]
+        else:
+            arr = arr[start:]
+    #arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
+    #print(arr.head(2))
+        #print("df.shape: ", arr.shape)
         #try:
         X_pfs, Y, Z, MVA = self.RootToArr(arr, X_pfs, X_mva, Y, Z, MVA)
         #except Exception:
@@ -133,13 +136,12 @@ class Utilities():
             try:
                 f = r.TFile.Open(infile)
                 t = f.Get("Candidates")
-                arr = pd.DataFrame(rn.tree2array(t))
-            	if "DY" in infile:
-                    arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
-       		elif "WJ" in infile:
-            	    arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
-                start = randint(0, len(arr.index) - nEvents)
-		print(start)
+                #arr = pd.DataFrame(rn.tree2array(t))
+            	#if "DY" in infile:
+                #    arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
+       		#elif "WJ" in infile:
+            	#    arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
+                start = 0#randint(0, len(arr.index) - nEvents)
                 stop = start + nEvents
                 if (len(X_1) == 0):
                     X_1, Y, Z, MVA = self.LoadFile(infile, start, stop)
@@ -161,8 +163,8 @@ class Utilities():
         pool = ThreadPool(processes=nProcs)
         poolblock = []
         for p in np.arange(0, nProcs * nFiles, nFiles):
-	    for f in file_list[p:p + nFiles]:
-		print(f.split("/")[-1])
+            for f in file_list[p:p + nFiles]:
+                print(f.split("/")[-1])
             poolblock.append(pool.apply_async(self.BuildDataset, (file_list[p:p + nFiles],nEvents)))
             X_1, Y, Z, MVA = [], [], [], []
         for res in poolblock:
