@@ -1,10 +1,5 @@
-DYInc_2016_39_tree.root
-WJets_2016_202_tree.root
-DYInc_2016_62_tree.root
-DYInc_2016_13_tree.root
-WJets_2016_183_tree.root
-DYInc_2016_15_tree.root
-DYNJets_2016_41_tree.root
-WJets_2016_79_tree.root
-WJets_2016_93_tree.root
-WJets_2016_160_tree.root
+DYNJets_2016_36_tree.root
+WJets_2016_124_tree.root
+DYInc_2016_7_tree.root
+WJets_2016_126_tree.root
+WJets_2016_197_tree.root

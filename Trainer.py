@@ -8,20 +8,16 @@
     A deep convolutional neural network is loaded in ModelLoader and fit here.
     Later iterations of this code was ran over a 6 GPU (nvidia 1080s) cluster we built in our local office.
 '''
-# import keras.backend as K
 import numpy as np
-# from EventFiller import EventFiller
 from ModelLoader import ModelLoader
 from EvalModel import load_model
 from Utilities import Utilities
-# import sklearn.metrics as skmetrics
 from multiprocessing.pool import ThreadPool
 import pandas as pd
-# from glob import glob
-from History.utils import Histories
+from History.utils import Histories, Logger
+from LR.decay_learning import DecayLR
 import ConfigParser
 import argparse
-import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='config.ini', help="Configuration file")
@@ -38,6 +34,7 @@ TRAINING_RES = config.get("model", "dir")
 MODEL_NAME = config.get("model", "name")
 epoch = config.get("model","epoch")
 CONTINUE = config.get("model", "continue")
+
 
 def validate(files, model, nParticles):
     """
@@ -86,24 +83,28 @@ if __name__ == "__main__":
         print("Model Loaded")
     else:
         loader = ModelLoader((nParticles, nFeatures))
+        #loader = ModelLoader(( nFeatures, nParticles))
         model = loader.load()
     utils = Utilities(nParticles)
     history = Histories()
     history.set_up_config(config=config)
     history.on_train_begin()
+    lr_decay = DecayLR(history.aucs['train'])
+    lr_decay.set_model(model)
+    log = Logger(history, TRAINING_RES + "train_" + MODEL_NAME + ".log")
     # Build the first training dataset
     print("TRAIN_DATA: ", TRAIN_DATA)
     X_train, Y, W_train, MVA_train = utils.BuildBatch(indir=TRAIN_DATA, nEvents=100)
 
-    log_name = TRAINING_RES + "train_" + MODEL_NAME + ".log"
-    log = open(log_name, 'w')
-    start_time = time.clock()
+    #print(X_train[0])
+    log.on_train_begin()
 
-    for epoch in range(int(epoch) + 1, 50):
+    for epoch in range(int(epoch) + 1, 51):
         pool_local = ThreadPool(processes=1)
         # Shuffle loaded datasets and begin
         inds = range(len(X_train))
         np.random.shuffle(inds)
+
         X_epoch, Y_epoch, W_epoch, MVA_epoch = X_train[inds], Y[inds], W_train[inds], MVA_train[inds]
 
         # Check that nothing strange happened in the loaded datset
@@ -124,7 +125,9 @@ if __name__ == "__main__":
         train_pred = model.predict(X_epoch)
         store_results(model, epoch=epoch, config=config)
         history.on_epoch_end(Y_epoch, [i[0].round() for i in train_pred])
-        if (epoch % 10 == 0):
+        lr_decay.on_epoch_end(epoch)
+        log.on_epoch_end(epoch)
+        if epoch % 10 == 0:
             history.store_history()
             # X_train,Y,W_train, MVA = utils.BuildBatch(indir=TRAIN_DATA)
             df_preds = pd.DataFrame({"train_pred": [i[0] for i in train_pred]})
@@ -134,15 +137,4 @@ if __name__ == "__main__":
             df_mva = pd.DataFrame({'mva_train_e_{0}'.format(epoch): [i for i in MVA_epoch]})
             df_mva.to_csv("{1}/labels_mva_e_{0}.csv".format(epoch, TRAINING_RES), index=False)
         X_train, Y, W_train, MVA = utils.BuildBatch(indir=TRAIN_DATA, nEvents=100)
-
-        epoch_time = time.clock() - start_time
-        log.write(
-          "Epoch: {0}; Time: {1} s; Loss: {2}; Acc: {3}; AUC: {4}; Precision: {5}; Recall: {6}\n".format(epoch, epoch_time,
-                                                                                                         history.losses['train'][-1],
-                                                                                                         history.acc['train'][-1],
-                                                                                                         history.aucs['train'][-1],
-                                                                                                         history.prec['train'][-1],
-                                                                                                         history.rec['train'][-1]))
-        log.flush()
-
-    log.close()
+    log.on_train_end()

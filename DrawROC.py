@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 import argparse
 import ConfigParser
 
+# Parse arguments
 parser = argparse.ArgumentParser()
-
 parser.add_argument("--config", default="config.ini", help="Configuration file")
-
 args = parser.parse_args()
 configuration_name = args.config
 print(configuration_name)
 
+# Parse config
 config = ConfigParser.RawConfigParser()
 config.read(configuration_name)
 
@@ -35,7 +35,7 @@ config.read(configuration_name)
 #     return
 
 if __name__ == "__main__":
-    file_list = glob("{0}/ResultsClassFilter/*{1}.csv".format(config.get("model", "dir"), config.get("model", "epoch")))
+    file_list = glob("{0}/ResultsClassFilter/*_{1}.csv".format(config.get("model", "dir"), config.get("model", "epoch")))
     df = pd.DataFrame()
     for file in file_list:
         print(file)
@@ -54,6 +54,7 @@ if __name__ == "__main__":
     #print(fpr[-5:], tpr[-5:])
     #print(fpr[:5], tpr[:5])
     plt.figure()
+    print(len(tpr_dpf))
     plt.plot(tpr_dpf, fpr_dpf, color='red', label='DPF:ROC AUC={:.3f}'.format(roc_auc_dpf))
     plt.plot(tpr_mva, fpr_mva, color='blue', label='MVA:ROC AUC={:.3f}'.format(roc_auc_mva))
     plt.plot(tpr_avg, fpr_avg, color='green', label='Average:ROC AUC={:.3f}'.format(roc_auc_avg))

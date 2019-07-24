@@ -6,11 +6,10 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 from sklearn.utils import shuffle
 import  keras
-import keras.backend as K
 from sklearn.metrics import  accuracy_score, log_loss, precision_score, recall_score
 import os
 import numpy as np
-
+import time
 
 class Histories(keras.callbacks.Callback):
     """
@@ -66,8 +65,8 @@ class Histories(keras.callbacks.Callback):
         self.aucs = {'train':[], 'val':[]}
         self.losses = {'train':[], 'val':[]}
         self.acc = {'train':[], 'val':[]}
-	self.prec = {'train':[], 'val':[]}
-	self.rec = {'train':[], 'val':[]}
+        self.prec = {'train':[], 'val':[]}
+        self.rec = {'train':[], 'val':[]}
         self.lr = []
 
     def on_train_end(self, logs={}):
@@ -227,7 +226,35 @@ def get_results(model, _x_train, _y_train, x_test, y_test, _w_train, w_test):
     return _df_train, _df_test
 
 
+class Logger(keras.callbacks.Callback):
 
+    def __init__(self, history, filename):
+        super(Logger, self).__init__()
+        self.history = history
+        self.file = open(filename, 'w')
+        self.start_time = 0
 
+    def on_train_begin(self, logs=None):
+        self.start_time = time.time()
+        return
 
+    def on_epoch_end(self, epoch, logs=None):
+        """
 
+        :return:
+        """
+        epoch_time = time.time() - self.start_time
+        self.file.write(
+            "Epoch: {0}; Time: {1} s; Loss: {2}; Acc: {3}; AUC: {4}; Precision: {5}; Recall: {6}\n".format(
+                                                                                                            epoch, epoch_time,
+                                                                                                            self.history.losses['train'][-1],
+                                                                                                            self.history.acc['train'][-1],
+                                                                                                            self.history.aucs['train'][-1],
+                                                                                                            self.history.prec['train'][-1],
+                                                                                                            self.history.rec['train'][-1]))
+        self.file.flush()
+        return
+
+    def on_train_end(self, logs=None):
+        self.file.close()
+        return

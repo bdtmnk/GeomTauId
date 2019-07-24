@@ -64,9 +64,10 @@ class Utilities():
                 continue
             # print "evt shape", evt.shape
             X_pfs.append(evt)
+            #X_pfs.append(np.transpose(evt))
             Y.append(int(levent['lepTauMatch_1']))
             Z.append(int(levent['lepRecoPt_1']))
-	   
+
             MVA.append(np.array([levent['lepMVAIso_1'], int(levent['decayMode_1']), int(levent['lepMuMatch_1']),
                                  int(levent['lepEleMatch_1']), levent['lepTauMatch_1'], 1-levent['lepTauMatch_1']]))
             #print("MVA shape:", MVA.shape)
@@ -81,15 +82,23 @@ class Utilities():
         except:
             return [], [], [], [], []
         #arr = pd.DataFrame(rn.tree2array(t, start=start, stop=stop))
-        arr = pd.DataFrame(rn.tree2array(t))
+        #arr = pd.DataFrame(rn.tree2array(t))
         if "DY" in in_file:
-            arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
+            arr = pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==1", start=start, stop=stop))
+            pos = stop
+            while len(arr.index) < stop - start:
+                pos += 100
+                arr = arr.append(pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==1", start=pos, stop=pos+100)))
+            #arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
         elif "WJ" in in_file:
-            arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
-        if stop <= len(arr.index):
-            arr = arr[start:stop]
-        else:
-            arr = arr[start:]
+            arr = pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==0", start=start, stop=stop))
+            pos = stop
+            while len(arr.index) < stop - start:
+                pos += 100
+                arr = arr.append(pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==1", start=pos, stop=pos+100)))
+        if len(arr.index) > stop - start:
+            arr = arr[:stop - start]
+            #arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
     #arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
     #print(arr.head(2))
         #print("df.shape: ", arr.shape)
@@ -112,7 +121,7 @@ class Utilities():
         t = f.Get("Candidates")
         start = 0#randint(0, t.GetEntries() - nEvents)
         if nEvents is None:
-            stop = start+t.GetEntries()
+            stop = start+t.GetEntries("")
         else:
             stop = start+nEvents
         print(start, stop)
@@ -136,14 +145,12 @@ class Utilities():
             try:
                 f = r.TFile.Open(infile)
                 t = f.Get("Candidates")
-                #arr = pd.DataFrame(rn.tree2array(t))
-            	#if "DY" in infile:
-                #    arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
-       		#elif "WJ" in infile:
-            	#    arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
-                start = 0#randint(0, len(arr.index) - nEvents)
+                if "DY" in infile:
+                    start = randint(0, t.GetEntries("(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==1") - nEvents)
+                elif "WJ" in infile:
+                    start = randint(0, t.GetEntries("(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==0") - nEvents)
                 stop = start + nEvents
-                if (len(X_1) == 0):
+                if len(X_1) == 0:
                     X_1, Y, Z, MVA = self.LoadFile(infile, start, stop)
                 else:
                     X_1t, Yt, Zt, MVAt = self.LoadFile(infile, start, stop)
@@ -165,16 +172,16 @@ class Utilities():
         for p in np.arange(0, nProcs * nFiles, nFiles):
             for f in file_list[p:p + nFiles]:
                 print(f.split("/")[-1])
-            poolblock.append(pool.apply_async(self.BuildDataset, (file_list[p:p + nFiles],nEvents)))
+            poolblock.append(pool.apply_async(self.BuildDataset, (file_list[p:p + nFiles], nEvents)))
             X_1, Y, Z, MVA = [], [], [], []
         for res in poolblock:
             try:
-                if (len(X_1) == 0):
+                if len(X_1) == 0:
                     output = res.get(timeout=2000)
                     X_1, Y, Z, MVA = output  # res.get(timeout=1000)
                 else:
                     X_1t, Yt, Zt, MVAt = res.get(timeout=1000)
-                    if (len(X_1t) > 0):
+                    if len(X_1t) > 0:
                         X_1 = np.vstack((X_1, X_1t))
                         Y = np.append(Y, Yt)
                         Z = np.append(Z, Zt)

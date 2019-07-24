@@ -6,20 +6,21 @@ import keras
 from keras.models import Model
 from keras.layers import *
 from keras.layers.advanced_activations import LeakyReLU
-from keras.callbacks import Callback
 from keras.optimizers import Adam
 from keras.utils import plot_model
 import tensorflow as tf
+
 
 def auc(y_true, y_pred):
     auc = tf.metrics.auc(y_true, y_pred)[1]
     K.get_session().run(tf.local_variables_initializer())
     return auc
 
+
 class ModelLoader:
   def __init__(self, inshape):
     self.inshape = inshape
-      
+
   def load(self):
     modelinshape = Input(self.inshape)
     model = Conv1D(1024,kernel_size=4,padding="same")(modelinshape)

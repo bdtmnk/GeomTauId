@@ -9,21 +9,14 @@ configuration_name = args.config
 print(configuration_name)
 file_to_evaluate = args.file
 
-from keras.models import load_model
-from ModelLoader import ModelLoader
 from Utilities import Utilities
 import pandas as pd
 from glob import glob
-import numpy as np
-import sklearn.metrics as skmetrics
-from multiprocessing.pool import ThreadPool
-from EventFiller import EventFiller
 import ConfigParser
 import os
 from keras.models import model_from_json
 from keras.optimizers import Adam
 from ModelLoader import auc
-import matplotlib.pyplot as plt
 
 #####   Parse config:    #####
 config = ConfigParser.RawConfigParser()
@@ -34,6 +27,7 @@ TEST_DATA = config.get("data","test")
 TRAINING_RES =  config.get("model","dir")+config.get("model","name")
 MODEL_NAME = config.get("model","name")
 epoch = config.get("model","epoch")
+
 
 def load_model(config, epoch=0, model=None):
 
@@ -48,40 +42,25 @@ def load_model(config, epoch=0, model=None):
     print(dir + "/" + model_name + "W_{0}.h5".format(epoch))
     model.load_weights(dir + "/" + model_name + "W_{0}.h5".format(epoch))
     print("Loaded model from disk")
-    opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    opt = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     model.compile(loss='binary_crossentropy', metrics=['accuracy', auc], optimizer=opt)
     return model
 
-
-def print_roc(label, pred, path ):
-
-    fpr, tpr, thresholds = skmetrics.roc_curve(label, pred)
-    plt.figure()
-    plt.plot(tpr, fpr, color='red')
-    plt.plot([0, 1], [0, 1], color='black', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.0])
-    plt.xlabel('True Positive')
-    plt.ylabel('False Positive')
-    # plt.legend()
-    plt.title('Inverted ROC')
-    plt.savefig(path + 'ROC_CNN.pdf')
-    return
 
 if __name__ == "__main__":
     if not os.path.exists("{0}/ResultsClassFilter/".format(config.get("model", "dir"))):
         os.mkdir("{0}/ResultsClassFilter/".format(config.get("model", "dir")))
     # Specify number of particles to use and number of features
-    nParticles=60
+    nParticles = 60
     print("Start")
     utils  = Utilities(nParticles)
-    TEST_DATA = config.get("data","test") + "/" +file_to_evaluate
+    TEST_DATA = config.get("data","test") + "/" + file_to_evaluate
     print(TEST_DATA)
     # Build the validation dataset
     Samples = glob(TEST_DATA)
     print(Samples)
     if config.get("model","meta_name") == "DeepSets":
-        #Build Architecture from the
+        # Build Architecture from the
         from Trainer_DeepSet import model_build
         model = model_build()
         model = load_model(config=config, epoch=epoch, model=model)
@@ -110,7 +89,6 @@ if __name__ == "__main__":
                                    'tau_match': [i[4] for i in MVA]
                                    })
         df_predict.to_csv("{2}/ResultsClassFilter/{1}_{0}.csv".format(epoch, sample.split("/")[-1], config.get("model","dir")), index=False)
-        #print_roc(df_predict.labels_valid, df_predict.valid_pred, "{0}/".format(config.get("model", "dir")))
    
 
 
