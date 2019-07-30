@@ -94,12 +94,12 @@ if __name__ == "__main__":
     log = Logger(history, TRAINING_RES + "train_" + MODEL_NAME + ".log")
     # Build the first training dataset
     print("TRAIN_DATA: ", TRAIN_DATA)
-    X_train, Y, W_train, MVA_train = utils.BuildBatch(indir=TRAIN_DATA, nEvents=100)
 
     #print(X_train[0])
     log.on_train_begin()
 
     for epoch in range(int(epoch) + 1, 51):
+        X_train, Y, W_train, MVA_train = utils.BuildBatch(indir=TRAIN_DATA, nEvents=250)
         pool_local = ThreadPool(processes=1)
         # Shuffle loaded datasets and begin
         inds = range(len(X_train))
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         ##Save the validation:
         history.set_mode(mode="train")
 
-        model.fit(X_epoch, Y_epoch, batch_size=1000, epochs=1, verbose=1, sample_weight=W_epoch)
+        model.fit(X_epoch, Y_epoch, batch_size=500, epochs=1, verbose=1, sample_weight=W_epoch)
 
         ##Save shape and Datasets to results
         # pd.DataFrame(X_epoch).to_csv("X_example.csv", index=False)
@@ -136,5 +136,4 @@ if __name__ == "__main__":
             df_label.to_csv("{1}/labels_train_e_{0}.csv".format(epoch, TRAINING_RES), index=False)
             df_mva = pd.DataFrame({'mva_train_e_{0}'.format(epoch): [i for i in MVA_epoch]})
             df_mva.to_csv("{1}/labels_mva_e_{0}.csv".format(epoch, TRAINING_RES), index=False)
-        X_train, Y, W_train, MVA = utils.BuildBatch(indir=TRAIN_DATA, nEvents=100)
     log.on_train_end()

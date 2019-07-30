@@ -41,5 +41,6 @@ class DecayLR(keras.callbacks.Callback):
                 if self.wait > self.patience:
                     new_lr = max(lr*self.factor, self.lr_min)
                     K.set_value(self.model.optimizer.lr, new_lr)
+                    print("Learning rate reduced to {}\n".format(new_lr))
                     self.wait = 0
             return

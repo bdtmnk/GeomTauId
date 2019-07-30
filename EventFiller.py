@@ -82,8 +82,6 @@ class EventFiller:
             pdgid == 1, pdgid == 2, pdgid == 11, pdgid == 13, pdgid == 130,
             pdgid == 211, tauind]
 
-
-
         evt = evt[sortedInds]
         evt = evt[len(evt) - maxCands:]
         evt[evt == np.nan] = 0

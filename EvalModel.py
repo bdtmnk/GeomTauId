@@ -3,9 +3,11 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--config", default="config.ini", help="Configuration file")
 parser.add_argument("--file", default="DYInc_2016_25_tree.root", help="Root file to Evaluate")
+parser.add_argument("--epoch", default="-1", help="Number of epoch")
 
 args = parser.parse_args()
 configuration_name = args.config
+epoch = args.epoch
 print(configuration_name)
 file_to_evaluate = args.file
 
@@ -26,7 +28,8 @@ print(config)
 TEST_DATA = config.get("data","test")
 TRAINING_RES =  config.get("model","dir")+config.get("model","name")
 MODEL_NAME = config.get("model","name")
-epoch = config.get("model","epoch")
+if epoch == "-1":
+    epoch = config.get("model", "epoch")
 
 
 def load_model(config, epoch=0, model=None):
@@ -80,7 +83,7 @@ if __name__ == "__main__":
         #del df_valid
         predict = model.predict(X_valid, batch_size=1000)
         #print(predict)
-        df_predict = pd.DataFrame({"valid_pred": [i[0] for i in predict ],
+        df_predict = pd.DataFrame({'valid_pred': [i[0] for i in predict ],
                                    'labels_valid': [i for i in Y_valid],
                                    'mva': [i[0] for i in MVA],
                                    'decay_mode': [i[1] for i in MVA],

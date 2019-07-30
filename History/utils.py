@@ -11,6 +11,7 @@ import os
 import numpy as np
 import time
 
+
 class Histories(keras.callbacks.Callback):
     """
 

@@ -31,7 +31,7 @@ cd jobs
 lt=`echo $line`
 _lt=`echo $line | cut -d '/' -f2`
 		cat bss > job_${_lt}.sh
-		echo python /nfs/dust/cms/user/bukinkir/GeomTauId/EvalModel.py --config=$config --file=$lt >> job_${_lt}.sh
+		echo python /nfs/dust/cms/user/bukinkir/GeomTauId/EvalModel.py --config=$config --epoch=40 --file=$lt >> job_${_lt}.sh
 		chmod 777 job_${_lt}.sh
 		chmod +x job_${_lt}.sh
 		./HTC_submit.sh job_${_lt}.sh ${_lt}

@@ -12,11 +12,11 @@ from random import randint
 from EventFiller import EventFiller
 import pandas as pd
 
-
 class Utilities():
 
     def __init__(self, maxCands):
         self.maxCands = maxCands
+        self.features_order = np.array([43, 14, 21, 46,  4, 12, 39, 16, 15, 13, 11,  9, 31, 32,  1, 29, 28, 27, 35, 41,  8, 34, 23, 18, 25, 0,  5, 30,  3, 37,  6, 24, 33,  7, 38, 36, 22, 44, 20, 26,  2, 40, 45, 42, 19, 10, 17])
 
     # Build Event Weights For Training (flatten in observed tau pt and do class-balancing)
     def GetEventWeights(self, pt_train, Y):
@@ -71,6 +71,7 @@ class Utilities():
             MVA.append(np.array([levent['lepMVAIso_1'], int(levent['decayMode_1']), int(levent['lepMuMatch_1']),
                                  int(levent['lepEleMatch_1']), levent['lepTauMatch_1'], 1-levent['lepTauMatch_1']]))
             #print("MVA shape:", MVA.shape)
+        X_pfs = np.array(X_pfs)[:, :, self.features_order]
         return np.array(X_pfs), np.array(Y), np.array(Z), np.array(MVA)
 
     # Load a specific root file into a processed array
@@ -85,19 +86,19 @@ class Utilities():
         #arr = pd.DataFrame(rn.tree2array(t))
         if "DY" in in_file:
             arr = pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==1", start=start, stop=stop))
-            pos = stop
-            while len(arr.index) < stop - start:
-                pos += 100
-                arr = arr.append(pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==1", start=pos, stop=pos+100)))
+            # pos = stop
+            # while len(arr.index) < stop - start:
+            #     arr = arr.append(pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==1", start=pos, stop=pos+100)))
+            #     pos += 100
             #arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 1) ]
         elif "WJ" in in_file:
             arr = pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==0", start=start, stop=stop))
-            pos = stop
-            while len(arr.index) < stop - start:
-                pos += 100
-                arr = arr.append(pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==1", start=pos, stop=pos+100)))
-        if len(arr.index) > stop - start:
-            arr = arr[:stop - start]
+            # pos = stop
+            # while len(arr.index) < stop - start:
+            #     arr = arr.append(pd.DataFrame(rn.tree2array(t, selection="(decayMode_1<=1 || decayMode_1==10) && lepTauMatch_1==1", start=pos, stop=pos+100)))
+            #     pos += 100
+        # if len(arr.index) > stop - start:
+        #     arr = arr[:stop - start]
             #arr = arr[((arr['decayMode_1']<=1) | (arr['decayMode_1']==10)) & (arr['lepTauMatch_1'] == 0) ]
     #arr = arr[(arr['decayMode_1']<=1) | (arr['decayMode_1']==10)]
     #print(arr.head(2))
