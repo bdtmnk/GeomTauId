@@ -1,6 +1,21 @@
-/afs/desy.de/user/b/bukinkir/.local/lib/python2.7/site-packages/sklearn/metrics/classification.py:1143: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples.
-  'precision', 'predicted', average, warn_for)
 Traceback (most recent call last):
-  File "Train.py", line 84, in <module>
-    "Epoch: {0}; Time: {1} s; Loss: {2}; Acc: {3}; AUC: {4}; Precision: {5}; Recall: {6}\n".format(
-ZeroDivisionError: integer division or modulo by zero
+  File "Train.py", line 46, in <module>
+    for data in iter(train_loader):
+  File "/nfs/dust/cms/user/bukinkir/anaconda2/envs/geomTauId/lib/python2.7/site-packages/torch/utils/data/dataloader.py", line 582, in __next__
+    return self._process_next_batch(batch)
+  File "/nfs/dust/cms/user/bukinkir/anaconda2/envs/geomTauId/lib/python2.7/site-packages/torch/utils/data/dataloader.py", line 608, in _process_next_batch
+    raise batch.exc_type(batch.exc_msg)
+ImportError: Traceback (most recent call last):
+  File "/nfs/dust/cms/user/bukinkir/anaconda2/envs/geomTauId/lib/python2.7/site-packages/torch/utils/data/_utils/worker.py", line 99, in _worker_loop
+    samples = collate_fn([dataset[i] for i in batch_indices])
+  File "/nfs/dust/cms/user/bukinkir/GeomTauId/LoadData.py", line 115, in __getitem__
+    data = self.process(root_file, self.filenames[index])
+  File "/nfs/dust/cms/user/bukinkir/GeomTauId/LoadData.py", line 128, in process
+    entrystart =  index_choice(root_file['Candidates'], file_name)
+  File "/nfs/dust/cms/user/bukinkir/GeomTauId/LoadData.py", line 74, in index_choice
+    df['jet_match'] = 1 - df['el_match'] - df['tau_match'] - df['mu_match']
+  File "/afs/desy.de/user/b/bukinkir/.local/lib/python2.7/site-packages/pandas/core/ops.py", line 1583, in wrapper
+  File "/afs/desy.de/user/b/bukinkir/.local/lib/python2.7/site-packages/pandas/core/ops.py", line 1529, in safe_na_op
+  File "/afs/desy.de/user/b/bukinkir/.local/lib/python2.7/site-packages/pandas/core/ops.py", line 1503, in na_op
+ImportError: No module named expressions
+

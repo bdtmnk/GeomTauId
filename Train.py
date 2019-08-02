@@ -12,41 +12,40 @@ from sklearn.metrics import  accuracy_score, roc_auc_score,  precision_score, re
 
 TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
 TEST_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/test_samples/"
-TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/GCN/"
+TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/GCN2/"
 
 if __name__ == "__main__":
-    train_dataset = TauIdDataset(TRAIN_SET)
+    train_dataset = TauIdDataset(TRAIN_SET, num=4096)
     train_length = train_dataset.len
     print(train_length)
-    train_loader = DataLoader(train_dataset, batch_size=train_length, shuffle=True, num_workers=0)
+    train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True, num_workers=5)
 
-    test_dataset = TauIdDataset(TEST_SET)
+    test_dataset = TauIdDataset(TEST_SET, num=512)
     test_length = test_dataset.len
-    test_loader = DataLoader(test_dataset, batch_size=test_length, shuffle=True, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=test_length, shuffle=True, num_workers=5)
 
     net = Net()
-    optimizer = optim.Adam(net.parameters(), lr=0.0001)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
+    # optimizer = optim.Adam(net.parameters(), lr=0.001)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
+    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
     running_loss = 0.0
     train_loss = []
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
 
-    net.to(device)
-
-    net = nn.DataParallel(net)
+    # net = nn.DataParallel(net)
 
     i = 1
 
     log = open(TRAINING_RES + "train.log", 'w')
     start_time = time.time()
 
-    for epoch in range(1, 501):
+    for epoch in range(1, 101):
         Loss = acc = auc = prec = rec = 0
         j = k = 0
         for data in iter(train_loader):
-            print(data)
-            inputs, labels = data.x.to(device), data.y.to(device)
+            # print(data)
+            inputs, labels = data.x, data.y
             print("Input shape", inputs.shape)
             print("Labels shape", labels.shape)
 
@@ -55,12 +54,15 @@ if __name__ == "__main__":
             print("Num of features:",  data.num_features)
 
             # forward + backward + optimize
-            outputs = net(data.to(device))
+            outputs = net(data)
             print("Output shape", outputs.shape)
-            loss = F.nll_loss(outputs, data.y)
-            print(loss)
+            loss = F.nll_loss(outputs, labels)
             loss.backward()
-            scheduler.step(loss)
+            # for par in net.parameters():
+            #     print("Parameter:"+ str(par))
+            #     print("Gradient:" + str(par.grad))
+            optimizer.step()
+            print(loss)
 
             train_loss.append(np.array(loss.detach().numpy(), dtype="int32"))
             Loss += loss.item()
@@ -88,7 +90,7 @@ if __name__ == "__main__":
             print(str(e))
         log.flush()
 
-        if epoch % 10 == 1:
+        if epoch % 10 == 0:
             # test_dataiter = iter(test_loader)
             Loss = acc = auc = prec = rec = 0
             n = 0
@@ -103,8 +105,8 @@ if __name__ == "__main__":
             with torch.no_grad():
                 for data in  iter(test_loader):
                     # inputs, labels = data.x, data.y
-                    inputs, labels = data.x.to(device), data.y.to(device)
-                    outputs = net(data.to(device))
+                    inputs, labels = data.x, data.y
+                    outputs = net(data)
                     score = np.append(score, np.exp(outputs.detach().numpy()[:, 1]))
                     target = np.append(target, labels.detach().numpy())
                     # pt = np.append(pt, labels.detach().numpy()[:, 1])
@@ -136,6 +138,9 @@ if __name__ == "__main__":
             #                         'eta': [i for i in eta], 'decay_mode': [i for i in decay_mode],
             #                         'mva': [i for i in mva]})
             # df_eval.to_csv("{1}EvalResults/GCN_{0}.csv".format(epoch, TRAINING_RES), index=False)
+
+            df_eval = pd.DataFrame({"score": [i for i in score], 'label': [i for i in target]})
+            df_eval.to_csv("{1}EvalResults/GCN_{0}.csv".format(epoch, TRAINING_RES), index=False)
 
             torch.save({
                 'epoch': epoch,
