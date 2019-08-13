@@ -1,147 +1,149 @@
-import pandas as pd
 import numpy as np
-from LoadData import TauIdDataset
+from LoadData import TauIdDataset, get_weights
 import torch
 from torch_geometric.data import Data, DataLoader
 from LoadModel import Net
-from torch import nn
 import torch.nn.functional as F
 import torch.optim as optim
-import time
-from sklearn.metrics import  accuracy_score, roc_auc_score,  precision_score, recall_score
+from Logger import  Logger
 
 TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
 TEST_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/test_samples/"
-TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/GCN2/"
+# TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/ECN/"
+
+
+FEATURES = [
+         'nLooseTaus',
+         'nPFCands_1',
+         'lepRecoPt_1',
+         'lepRecoEta_1',
+         'pfCandPt_1',
+         'pfCandPz_1',
+         'pfCandPtRel_1',
+         'pfCandPzRel_1',
+         'pfCandDr_1',
+         'pfCandDEta_1',
+         'pfCandDPhi_1',
+         'pfCandEta_1',
+         'pfCandDz_1',
+         'pfCandDzErr_1',
+         'pfCandDzSig_1',
+         'pfCandD0_1',
+         'pfCandD0Err_1',
+         'pfCandD0Sig_1',
+         'pfCandPtRelPtRel_1',
+         'pfCandD0D0_1',
+         'pfCandDzDz_1',
+         'pfCandD0Dz_1',
+         'pfCandD0Dphi_1',
+         'pfCandPuppiWeight_1',
+         'pfCandHits_1',
+         'pfCandPixHits_1',
+         'pfCandDVx_1',
+         'pfCandDVy_1',
+         'pfCandDVz_1',
+         'pfCandD_1'
+    ]
+
+
+def load_model(PATH):
+    checkpoint = torch.load(PATH)
+    net = checkpoint['net']
+    optimizer = checkpoint['optimizer']
+    epoch = checkpoint['epoch']
+    loss = checkpoint['loss']
+    return net, optimizer, epoch, loss
+
+
+bs_range = [256, 512, 1024, 4096]
 
 if __name__ == "__main__":
-    train_dataset = TauIdDataset(TRAIN_SET, num=4096)
-    train_length = train_dataset.len
-    print(train_length)
-    train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True, num_workers=5)
 
-    test_dataset = TauIdDataset(TEST_SET, num=512)
-    test_length = test_dataset.len
-    test_loader = DataLoader(test_dataset, batch_size=test_length, shuffle=True, num_workers=5)
+    for bs in bs_range:
+        TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/GCN{0}/" .format( str(bs))
+        if bs == 256:
+            RESUME_TRAINING = True
+            EPOCH = 7
+        else:
+            RESUME_TRAINING = False
+            EPOCH = 0
+        # Prepare train data
+        train_dataset = TauIdDataset(TRAIN_SET, num=4096)
+        train_length = train_dataset.len
+        train_loader = DataLoader(train_dataset, batch_size=bs, shuffle=True, num_workers=10)
 
-    net = Net()
-    # optimizer = optim.Adam(net.parameters(), lr=0.001)
-    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
-    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-    running_loss = 0.0
-    train_loss = []
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(device)
+        print(train_length)
 
-    # net = nn.DataParallel(net)
+        # Prepare test data
+        test_dataset = TauIdDataset(TEST_SET, num=512, mode='test')
+        test_length = test_dataset.len
+        test_loader = DataLoader(test_dataset, batch_size=test_length, shuffle=True, num_workers=10)
 
-    i = 1
+        # Load or create the network
+        if RESUME_TRAINING:
+            net, optimizer, _, _ = load_model('{0}GCN_{1}.pt'.format(TRAINING_RES, EPOCH))
+            print ("Model loaded")
+        else:
+            net = Net()
+            optimizer = optim.Adam(net.parameters(), lr=0.01)
+            EPOCH = 0
 
-    log = open(TRAINING_RES + "train.log", 'w')
-    start_time = time.time()
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        print(device)
 
-    for epoch in range(1, 101):
-        Loss = acc = auc = prec = rec = 0
-        j = k = 0
-        for data in iter(train_loader):
-            # print(data)
-            inputs, labels = data.x, data.y
-            print("Input shape", inputs.shape)
-            print("Labels shape", labels.shape)
+        # net = nn.DataParallel(net)
 
-            # zero the parameter gradients
-            optimizer.zero_grad()
-            print("Num of features:",  data.num_features)
+        i = 1
+        # if RESUME_TRAINING:
+        #     log = open(TRAINING_RES + "train.log", 'a')
+        # else:
+        #     log = open(TRAINING_RES + "train.log", 'w')
+        # start_time = time.time()
 
-            # forward + backward + optimize
-            outputs = net(data)
-            print("Output shape", outputs.shape)
-            loss = F.nll_loss(outputs, labels)
-            loss.backward()
-            # for par in net.parameters():
-            #     print("Parameter:"+ str(par))
-            #     print("Gradient:" + str(par.grad))
-            optimizer.step()
-            print(loss)
+        log = Logger(TRAINING_RES, RESUME_TRAINING)
 
-            train_loss.append(np.array(loss.detach().numpy(), dtype="int32"))
-            Loss += loss.item()
-            _, prediction= torch.max(outputs.data, 1)
-            target =  labels.detach().numpy()
-            score = np.exp(outputs.detach().numpy()[:, 1])
-            acc += accuracy_score(target, prediction)
-            prec += precision_score(target, prediction)
-            rec += recall_score(target, prediction)
-            i += 1
-            j += 1
-            try:
-                auc += roc_auc_score(target, score)
-                k += 1
-            except Exception:
-                  print("AUC is not defined\n")
+        for epoch in range(EPOCH + 1, 11):
+            # Loss = acc = auc = prec = rec = 0
+            j = k = 0
+            for data in iter(train_loader):
+                # df = pd.DataFrame()
+                # for k in range(len(FEATURES)):
+                #     df[FEATURES[k]] = pd.Series(df_vars.detach().numpy()[:, k])
+                # df.to_csv(
+                #     "{0}hists/data_e{1}b{2}.csv".format(TRAINING_RES, epoch, j),
+                #     index=False)
 
-        len = j
-        epoch_time = time.time() - start_time
-        try:
-            log.write(
-                "Epoch: {0}; Time: {1} s; Loss: {2}; Acc: {3}; AUC: {4}; Precision: {5}; Recall: {6}\n".format(
-                    epoch, epoch_time, Loss / len, acc / len, auc / k, prec / len, rec / len))
-        except Exception, e:
-            print(str(e))
-        log.flush()
+                inputs, labels = data.x, data.y.type(torch.FloatTensor)
 
-        if epoch % 10 == 0:
-            # test_dataiter = iter(test_loader)
-            Loss = acc = auc = prec = rec = 0
-            n = 0
-            score = np.array([])
-            target = np.array([])
-            pt = np.array([])
-            eta = np.array([])
-            decay_mode = np.array([])
-            mva = np.array([])
-            prediction = np.array([])
+                # Compute the weights of events
+                pt_train = inputs.detach().numpy()[:, 3]
+                _, ind = np.unique(data.batch, return_index=True)
+                pt_train = pt_train[ind]
+                Y = labels.detach().numpy()
+                weight = get_weights(pt_train, Y)
 
-            with torch.no_grad():
-                for data in  iter(test_loader):
-                    # inputs, labels = data.x, data.y
-                    inputs, labels = data.x, data.y
-                    outputs = net(data)
-                    score = np.append(score, np.exp(outputs.detach().numpy()[:, 1]))
-                    target = np.append(target, labels.detach().numpy())
-                    # pt = np.append(pt, labels.detach().numpy()[:, 1])
-                    # eta = np.append(eta, labels.detach().numpy()[:, 2])
-                    # decay_mode = np.append(decay_mode, labels.detach().numpy()[:, 3])
-                    # mva = np.append(mva, labels.detach().numpy()[:, 4])
-                    loss = F.nll_loss(outputs, labels)
-                    Loss += loss.item()
-                    # prediction = np.array(outputs.detach().numpy()[:, 1] < outputs.detach().numpy()[:, 0], dtype='int32')
-                    _, pred = torch.max(outputs.data, 1)
-                    prediction = np.append(prediction, pred)
-                    n += 1
-            acc = accuracy_score(target, prediction)
-            prec = precision_score(target, prediction)
-            rec = recall_score(target, prediction)
-            try:
-                auc = roc_auc_score(target, score)
-            except Exception:
-                  print("AUC is not defined\n")
-            try:
-                log.write(
-                "Test results: Epoch: {0}; Time: {1} s; Loss: {2}; Acc: {3}; AUC: {4}; Precision: {5}; Recall: {6}\n".format(
-                    epoch, epoch_time, Loss/n, acc, auc, prec, rec))
-            except Exception, e:
-                print(str(e))
-            log.flush()
+                print("Input shape", inputs.shape)
+                print("Labels shape", labels.shape)
 
-            # df_eval = pd.DataFrame({"score": [i for i in score], 'label': [i for i in target], 'pt': [i for i in pt],
-            #                         'eta': [i for i in eta], 'decay_mode': [i for i in decay_mode],
-            #                         'mva': [i for i in mva]})
-            # df_eval.to_csv("{1}EvalResults/GCN_{0}.csv".format(epoch, TRAINING_RES), index=False)
+                # zero the parameter gradients
+                optimizer.zero_grad()
+                print("Num of features:", data.num_features)
 
-            df_eval = pd.DataFrame({"score": [i for i in score], 'label': [i for i in target]})
-            df_eval.to_csv("{1}EvalResults/GCN_{0}.csv".format(epoch, TRAINING_RES), index=False)
+                # forward + backward + optimize
+                outputs = net(data)
+                print("Output shape", outputs.shape)
+                # loss = F.nll_loss(outputs, labels, weight=weight)
+                loss = F.binary_cross_entropy(outputs, labels, weight=weight)
+                loss.backward()
+                optimizer.step()
+                print(loss)
 
+                log.eval_train(loss, labels, outputs)
+                i += 1
+                j += 1
+
+            len = j
+            log.save_train(epoch)
             torch.save({
                 'epoch': epoch,
                 'net': net,
@@ -149,5 +151,17 @@ if __name__ == "__main__":
                 'loss': loss,
             }, '{0}GCN_{1}.pt'.format(TRAINING_RES, epoch))
 
-    log.close()
-    print('Finished Training:', running_loss)
+            if epoch % 10 == 0:
+                with torch.no_grad():
+                    labels_list = []
+                    outputs_list = []
+                    loss_list = []
+                    for data in iter(test_loader):
+                        inputs, labels = data.x, data.y.type(torch.FloatTensor)
+                        outputs = net(data)
+                        labels_list.append(labels)
+                        outputs_list.append(outputs)
+                        loss_list.append(F.binary_cross_entropy(outputs, labels[:, 0]))
+                log.eval_test(epoch, loss_list, labels_list, outputs_list)
+        log.close()
+    print('Finished Training')

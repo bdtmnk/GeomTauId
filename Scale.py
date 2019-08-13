@@ -89,7 +89,7 @@ def read_max(file_names):
             df = df[(df[mu_match]==0)&(df[el_match]==0)&(df[tau_match]==0)&((df[dm] <= 1) | (df[dm] == 10))]
         elif "DY" in file_name:
             df = df[(df[mu_match]==0)&(df[el_match]==0)&(df[tau_match]==1)&((df[dm] <= 1) | (df[dm] == 10))]
-        df = df[FEATURES]
+        df = df.filter(items = FEATURES)
         df[VECT_FEATURES] = df[VECT_FEATURES].applymap(lambda x: max(x))
         df = df.apply(np.max, axis=0)
         yield df
@@ -110,7 +110,7 @@ def read_min(file_names):
             df = df[(df[mu_match]==0)&(df[el_match]==0)&(df[tau_match]==0)&((df[dm] <= 1) | (df[dm] == 10))]
         elif "DY" in file_name:
             df = df[(df[mu_match]==0)&(df[el_match]==0)&(df[tau_match]==1)&((df[dm] <= 1) | (df[dm] == 10))]
-        df = df[FEATURES]
+        df = df.filter(items=FEATURES)
         df[VECT_FEATURES] = df[VECT_FEATURES].applymap(lambda x: min(x))
         df = df.apply(np.min, axis=0)
         yield df
@@ -124,7 +124,7 @@ if __name__ == '__main__':
         df = df.append(_df, ignore_index=True)
     df.reindex()
     df = df.apply(np.max, axis=0)
-    df.to_csv("{0}max.csv".format(TRAINING_RES), index=False)
+    df.to_csv("{0}max.csv".format(TRAINING_RES), header='val')
 
     df_gen = read_min(file_list)
     df = pd.DataFrame()
@@ -132,4 +132,4 @@ if __name__ == '__main__':
         df = df.append(_df, ignore_index=True)
     df.reindex()
     df = df.apply(np.min, axis=0)
-    df.to_csv("{0}min.csv".format(TRAINING_RES), index=False)
+    df.to_csv("{0}min.csv".format(TRAINING_RES), header='val')

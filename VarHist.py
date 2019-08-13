@@ -118,7 +118,6 @@ def read_file(file_names):
     # random.shuffle(file_names)
     # file_names = file_names[]
     dm = "decayMode_1"
-    pt = "lepRecoPt_1"
     el_match = "lepEleMatch_1"
     mu_match = "lepMuMatch_1"
     tau_match = "lepTauMatch_1"
@@ -126,9 +125,6 @@ def read_file(file_names):
         root_file = uproot.open(file_name)['Candidates']
         df = root_file.pandas.df(entrystop=1000, flatten=False)   # not the default
         df[VECT_FEATURES] = df[VECT_FEATURES].applymap(lambda x: x[0])
-        # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-        #     print(df)
-        # print(df.dtypes)
         for var in VECT_FEATURES:
             if df[var].dtype == 'object':
                 df[var] = df[var].astype('float32')

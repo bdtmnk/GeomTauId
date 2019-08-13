@@ -8,6 +8,12 @@ import torch
 
 TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/histograms/"
 
+COORDINATES = [
+    'pfCandDEta_1',
+    'pfCandDPhi_1',
+    'pfCandEta_1'
+]
+
 FEATURES = [
          'nLooseTaus',
          'nPFCands_1',
@@ -57,10 +63,49 @@ CATEGORICAL_FEATURES = [
     'pfCandFromPV_1'
 ]
 
+VECT_FEATURES = [
+         'pfCandPt_1',
+         'pfCandPz_1',
+         'pfCandPtRel_1',
+         'pfCandPzRel_1',
+         'pfCandDr_1',
+         'pfCandDEta_1',
+         'pfCandDPhi_1',
+         'pfCandEta_1',
+         'pfCandDz_1',
+         'pfCandDzErr_1',
+         'pfCandDzSig_1',
+         'pfCandD0_1',
+         'pfCandD0Err_1',
+         'pfCandD0Sig_1',
+         'pfCandPtRelPtRel_1',
+         'pfCandD0D0_1',
+         'pfCandDzDz_1',
+         'pfCandD0Dz_1',
+         'pfCandD0Dphi_1',
+         'pfCandPuppiWeight_1',
+         'pfCandHits_1',
+         'pfCandPixHits_1',
+         'pfCandLostInnerHits_1',
+         'pfCandDVx_1',
+         'pfCandDVy_1',
+         'pfCandDVz_1',
+         'pfCandD_1',
+         'pfCandPdgid_1',
+         'pfCandCharge_1',
+         'pfCandFromPV_1',
+         'pfCandVtxQuality_1',
+         'pfCandTauIndMatch_1',
+         'pfCandHighPurityTrk_1',
+         'pfCandIsBarrel_1',
+    ]
+
+VECT_FEATURES = tuple(VECT_FEATURES)
+FEATURES = tuple(FEATURES)
+
 
 def index_choice(root_file, file_name):
     """
-
     :param root_file:
     :param file_name:
     :return:
@@ -75,13 +120,35 @@ def index_choice(root_file, file_name):
     index = 0
     if "WJ" in file_name:
         index = np.where((df['jet_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
-        # index = np.where(df['tau_match'] == 0)[0]
         index = random.choice(index)
     elif "DY" in file_name:
         index = np.where((df['tau_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
         index = random.choice(index)
     return index
 
+
+def get_weights(pt_train, Y):
+    W_train = np.zeros(len(Y)) + 1
+    bins_by_pt = np.append(np.arange(30, 100, 10), [10000])
+    ptBkg = pt_train[Y != 1]
+    Hbkg, xedges = np.histogram(ptBkg, bins_by_pt)
+    Hbkg = 1. / Hbkg
+    Hbkg[np.isnan(Hbkg)] = 1.
+    Hbkg[np.isinf(Hbkg)] = 1.
+    ptSig = pt_train[Y == 1]
+    Hsig, xedges = np.histogram(ptSig, bins_by_pt)
+    Hsig = 1. / Hsig
+    Hsig[np.isnan(Hsig)] = 1.
+    Hsig[np.isinf(Hsig)] = 1.
+    for id_ in range(len(pt_train)):
+        ptInd = np.searchsorted(xedges, pt_train[id_]) - 1
+        if (Y[id_] == 1):
+            W_train[id_] = Hsig[ptInd] * W_train[id_]
+        else:
+            W_train[id_] = Hbkg[ptInd] * W_train[id_]
+    W_train[Y == 0] = W_train[Y == 0] * len(W_train) * .5 / np.sum(W_train[Y == 0])
+    W_train[Y == 1] = W_train[Y == 1] * len(W_train) * .5 / np.sum(W_train[Y == 1])
+    return torch.tensor(W_train, dtype=torch.float32)
 
 class TauIdDataset(InMemoryDataset):
     
@@ -94,11 +161,9 @@ class TauIdDataset(InMemoryDataset):
         self.root = root
         self.len = len(self.filenames)
         self.mode = mode
-        self.max = pd.read_csv("{0}max.csv".format(TRAINING_RES), dtype='float32')['val']
-        self.min = pd.read_csv("{0}min.csv".format(TRAINING_RES), dtype='float32')['val']
-        # print(self.max)
-        # print(self.min)
-        # self.num = num
+        self.max = pd.read_csv("{0}max.csv".format(TRAINING_RES))['val'].astype('float32')
+        self.features = pd.read_csv("{0}max.csv".format(TRAINING_RES))['feature']
+        self.min = pd.read_csv("{0}min.csv".format(TRAINING_RES))['val'].astype('float32')
 
     @property
     def raw_file_names(self):
@@ -128,132 +193,190 @@ class TauIdDataset(InMemoryDataset):
         entrystart =  index_choice(root_file['Candidates'], file_name)
         df = root_file['Candidates'].iterate(entrystart=entrystart, entrystop=entrystart+1)
         df = df.next()
+
+        # _df = pd.DataFrame()
+        # for feature in FEATURES:
+        #      _df[feature] = df[feature]
+        # for feature in VECT_FEATURES:
+        #     _df[feature] = _df[feature].apply(lambda x: x[0])
+        #     if _df[feature].dtype == 'object':
+        #         _df[feature] = _df[feature].astype('float32')
+        # df_vars = Data()
+        # df_vars.x = torch.from_numpy(_df.values)
+
         x_list = []
-        max_event = 60
+        x_pos = []
+        x_event = []
         nCand = len(df['pfCandCharge_1'][0])
-        # Split the Features and Labels
-        #val = np.zeros((max_event, len(FEATURES)))
+
         for feature_index in range(len(FEATURES)):
             feature = FEATURES[feature_index]
+            min = self.min.get(self.features[self.features == feature].index[0])
+            max = self.max.get(self.features[self.features == feature].index[0])
 
-            # try:
-            #     nCand = len(df[feature][0])
-            # except Exception:
-            #     nCand = 1
             try:
-                # print(self.min.get(feature_index))
                 arr = np.pad(df[feature], [(0, nCand - 1)], mode='mean')
-                arr = (arr - self.min.get(feature_index))/(self.max.get(feature_index) - self.min.get(feature_index))
+                arr = (arr - min) / (max - min)
                 x = torch.tensor(arr).float()
-                # print(x)
             except Exception:
-                # print(self.min.get(feature_index))
-                arr = np.pad((df[feature][0] - self.min.get(feature_index))/(self.max.get(feature_index) - self.min.get(feature_index)), [(0, 60-nCand) ], mode='constant')
-                arr = (df[feature][0] - self.min.get(feature_index))/(self.max.get(feature_index) - self.min.get(feature_index))
+                arr = (df[feature][0] - min) / (max - min)
                 x = torch.tensor(arr).float()
-                # print(x)
             x_list.append(x)
 
-        # for feature_index in range(len(FEATURES)):
-        #     feature = FEATURES[feature_index]
-        #
-        #     # try:
-        #     #     nCand = len(df[feature][0])
-        #     # except Exception:
-        #     #     nCand = 1
-        #     try:
-        #         arr = np.pad(df[feature], [(0, nCand - 1)], mode='mean')
-        #         x = torch.tensor(arr).float()
-        #     except Exception:
-        #         # arr = np.pad(df[feature][0], [(0, 60 - nCand)], mode='constant')
-        #         arr = df[feature][0]
-        #         x = torch.tensor(arr).float()
-        #     x_list.append(x)
+            # if feature in VECT_FEATURES:
+            #     arr = (df[feature][0] - min) / (max - min)
+            #     x = torch.tensor(arr).float()
+            #     x_list.append(x)
+            # else:
+            #     arr = (df[feature] - min) / (max - min)
+            #     x = torch.tensor(arr).float()
+            #     x_event.append(x)
 
-        # print(x_list)
+            if feature in COORDINATES:
+                x_pos.append(x)
 
-        pos = torch.stack(x_list)
+        pos = torch.stack(x_pos)
         pos = torch.transpose(pos, 0, 1)
+        pos[torch.isnan(pos)] = 0
         data = Data()
         data.pos = pos
 
         for feature_index in range(len(BINARY_FEATURES)):
             feature = BINARY_FEATURES[feature_index]
 
-            # try:
-            #     nCand = len(df[feature][0])
-            # except Exception:
-            #     nCand = 1
             try:
                 arr = np.pad(df[feature], [(0, nCand - 1)], mode='mean')
                 x = torch.tensor(arr).float()
             except Exception:
-                # arr = np.pad(df[feature][0], [(0, 60 - nCand)], mode='constant')
                 arr = df[feature][0]
                 x = torch.tensor(arr).float()
             x_list.append(x)
 
-        # print(x_list)
+            # if feature in VECT_FEATURES:
+            #     arr = df[feature][0]
+            #     x = torch.tensor(arr).float()
+            #     x_list.append(x)
+            # else:
+            #     arr = df[feature]
+            #     x = torch.tensor(arr).float()
+            #     x_event.append(x)
 
-        # arrs = []
-        #
-        # arr = df['decayMode_1']
-        # arrs.append(arr == 0)
-        # arrs.append(arr == 1)
-        # arrs.append(arr == 10)
-        #
-        # for arr in arrs:
-        #     arr = np.pad(arr, [(0, nCand -  1)], mode='mean')
-        #     # print(arr)
-        #     x_list.append(torch.tensor(arr).float())
-        #
-        # arrs = []
-        #
-        # arr = df['pfCandCharge_1'][0]
-        # arrs.append(arr == -1)
-        # arrs.append(arr ==  0)
-        # arrs.append(arr ==  1)
-        #
-        # arr = df['pfCandLostInnerHits_1'][0]
-        # arrs.append(arr == -1)
-        # arrs.append(arr ==  0)
-        # arrs.append(arr ==  1)
-        # arrs.append(arr ==  2)
-        #
-        # arr = df['pfCandPdgid_1'][0]
-        # arrs.append(arr ==  1)
-        # arrs.append(arr ==  2)
-        # arrs.append(arr == 11)
-        # arrs.append(arr ==  13)
-        # arrs.append(arr ==  130)
-        # arrs.append(arr ==  211)
-        # arrs.append(arr ==  22)
-        # arrs.append(arr >  22)
-        #
-        # arr = df['pfCandVtxQuality_1'][0]
-        # arrs.append(arr == 1)
-        # arrs.append(arr == 5)
-        # arrs.append(arr == 6)
-        # arrs.append(arr == 7)
-        #
-        # arr = df['pfCandFromPV_1'][0]
-        # arrs.append(arr == 1)
-        # arrs.append(arr == 2)
-        # arrs.append(arr == 3)
-        # # print(x_list)
-        #
-        # for arr in arrs:
-        #     # arr = np.pad(arr, [(0, 60 -  nCand)], mode='constant')
-        #     # print(arr)
-        #     x_list.append(torch.tensor(arr).float())
+        # for feature_index in range(len(CATEGORICAL_FEATURES)):
+        #     feature = CATEGORICAL_FEATURES[feature_index]
+        #     try:
+        #         arr = np.pad(df[feature], [(0, nCand - 1)], mode='mean')
+        #         x = torch.tensor(arr).float()
+        #     except Exception:
+        #         arr = df[feature][0]
+        #         x = torch.tensor(arr).float()
+        #     x_list.append(x)
+
+        arrs = []
+
+        arr = df['decayMode_1']
+        arrs.append(arr == 0)
+        arrs.append(arr == 1)
+        arrs.append(arr == 10)
+
+        for arr in arrs:
+            arr = np.pad(arr, [(0, nCand -  1)], mode='mean')
+            x = torch.tensor(arr).float()
+            x_list.append(x)
+            # x_event.append(x)
+
+        arrs = []
+
+        arr = df['pfCandCharge_1'][0]
+        arrs.append(arr == -1)
+        arrs.append(arr ==  0)
+        arrs.append(arr ==  1)
+
+        arr = df['pfCandLostInnerHits_1'][0]
+        arrs.append(arr == -1)
+        arrs.append(arr ==  0)
+        arrs.append(arr ==  1)
+        arrs.append(arr ==  2)
+
+        arr = df['pfCandPdgid_1'][0]
+        arrs.append(arr ==  1)
+        arrs.append(arr ==  2)
+        arrs.append(arr == 11)
+        arrs.append(arr ==  13)
+        arrs.append(arr ==  130)
+        arrs.append(arr ==  211)
+        arrs.append(arr ==  22)
+        arrs.append(arr >  22)
+
+        arr = df['pfCandVtxQuality_1'][0]
+        arrs.append(arr == 1)
+        arrs.append(arr == 5)
+        arrs.append(arr == 6)
+        arrs.append(arr == 7)
+
+        arr = df['pfCandFromPV_1'][0]
+        arrs.append(arr == 1)
+        arrs.append(arr == 2)
+        arrs.append(arr == 3)
+
+        for arr in arrs:
+            x_list.append(torch.tensor(arr).float())
 
         x = torch.stack(x_list)
         x = torch.transpose(x, 0, 1)
-        # data = Data()
-        # data.pos = x
-        data.x = x#, edge_index=edge_index)
+        x[torch.isnan(x)] = 0
+        data.x = x
+
+        # x2 = torch.stack(x_event)
+        # x2 = torch.transpose(x2, 0, 1)
+        # x2[torch.isnan(x2)] = 0
+        # data.x2 = x2
+
         if self.mode == 'train':
             data.y = torch.tensor(df['lepTauMatch_1'],  dtype=torch.int64)
         elif self.mode == 'test':
-            data.y = torch.tensor(df[['lepTauMatch_1', 'lepRecoPt_1', 'lepRecoEta_1', 'decayMode_1', 'lepMVAIso_1']])
-        return data  
+            # df_ = pd.DataFrame([df['lepTauMatch_1'].astype('int32'), df['lepRecoPt_1'], df['lepRecoEta_1'], df['decayMode_1'], df['lepMVAIso_1']])
+            df_ = pd.DataFrame( [df['lepTauMatch_1'].astype('int32'),
+                                df['lepMVAIso_1'],
+                                df['nLooseTaus'],
+                                df['nPFCands_1'],
+                                df['decayMode_1'],
+                                df['lepRecoPt_1'],
+                                df['lepRecoEta_1'],
+                                df['pfCandPt_1'][0],
+                                df['pfCandPz_1'][0],
+                                df['pfCandPtRel_1'][0],
+                                df['pfCandPzRel_1'][0],
+                                df['pfCandDr_1'][0],
+                                df['pfCandDEta_1'][0],
+                                df['pfCandDPhi_1'][0],
+                                df['pfCandEta_1'][0],
+                                df['pfCandDz_1'][0],
+                                df['pfCandDzErr_1'][0],
+                                df['pfCandDzSig_1'][0],
+                                df['pfCandD0_1'][0],
+                                df['pfCandD0Err_1'][0],
+                                df['pfCandD0Sig_1'][0],
+                                df['pfCandPtRelPtRel_1'][0],
+                                df['pfCandD0D0_1'][0],
+                                df['pfCandDzDz_1'][0],
+                                df['pfCandD0Dz_1'][0],
+                                df['pfCandD0Dphi_1'][0],
+                                df['pfCandPuppiWeight_1'][0],
+                                df['pfCandHits_1'][0],
+                                df['pfCandPixHits_1'][0],
+                                df['pfCandLostInnerHits_1'][0],
+                                df['pfCandDVx_1'][0],
+                                df['pfCandDVy_1'][0],
+                                df['pfCandDVz_1'][0],
+                                df['pfCandD_1'][0],
+                                df['pfCandPdgid_1'][0],
+                                df['pfCandCharge_1'][0],
+                                df['pfCandFromPV_1'][0],
+                                df['pfCandVtxQuality_1'][0],
+                                df['pfCandTauIndMatch_1'][0].astype('int32'),
+                                df['pfCandHighPurityTrk_1'][0].astype('int32'),
+                                df['pfCandIsBarrel_1'][0].astype('int32'),
+                                df['lepHasSV_1'].astype('int32')])
+            data.y = torch.tensor([df_[0].values])
+            # data.y = torch.transpose(data.y, 0, 1)
+        return data
