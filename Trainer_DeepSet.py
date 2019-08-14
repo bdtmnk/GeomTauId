@@ -1,6 +1,5 @@
 #!/usr/bin/python
-# Written by Owen Colegrove
-# Modified by leDidukh
+# Written by Leonid Didukh
 '''
     The code below are scraps of actual code I used to train a deep neural network for object recognition using the CMS detector.  It greatly outperformed previous high-level techniques developed over many generations by high energy physicists.
     Raw detector information from is condensed down into a ~1 tb sample of 100M simulated particle decays with real and fake events.
