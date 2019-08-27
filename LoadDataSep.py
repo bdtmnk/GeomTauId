@@ -340,6 +340,7 @@ class TauIdDataset(InMemoryDataset):
         x = torch.stack(x_list)
         x = torch.transpose(x, 0, 1)
         x[torch.isnan(x)] = 0
+        print(x)
         data.x = x
 
         x2 = torch.stack(x_event)
@@ -349,6 +350,7 @@ class TauIdDataset(InMemoryDataset):
 
         if self.mode == 'train':
             data.y = torch.tensor(df['lepTauMatch_1'],  dtype=torch.int64)
+            print(data.y)
         elif self.mode == 'test':
             # df_ = pd.DataFrame([df['lepTauMatch_1'].astype('int32'), df['lepRecoPt_1'], df['lepRecoEta_1'], df['decayMode_1'], df['lepMVAIso_1']])
             df_ = pd.DataFrame( [df['lepTauMatch_1'].astype('int32'),

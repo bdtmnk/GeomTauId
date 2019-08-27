@@ -7,9 +7,10 @@ import time
 
 TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
 TEST_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/test_samples/"
-TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/ECN3/"
-epoch = 68
+TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/ECN6/"
+epoch = 60
 batch_size = 2048
+num = 16384
 
 
 def load_model(PATH):
@@ -25,11 +26,11 @@ def load_model(PATH):
 
 
 if __name__ == '__main__':
-    test_dataset = TauIdDataset(TEST_SET, num=32768, mode='test')
-    test_length = test_dataset.len
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=5)
+    test_dataset = TauIdDataset(TEST_SET, num=num, mode='test')
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=1)
 
     net, _, epoch, _ = load_model('{0}ECN_{1}.pt'.format(TRAINING_RES, epoch))
+    print(net)
 
     score = np.array([])
     target = np.array([])
@@ -53,11 +54,6 @@ if __name__ == '__main__':
     pfCandD0_1 = np.array([])
     pfCandD0Err_1 = np.array([])
     pfCandD0Sig_1 = np.array([])
-    pfCandPtRelPtRel_1 = np.array([])
-    pfCandD0D0_1 = np.array([])
-    pfCandDzDz_1 = np.array([])
-    pfCandD0Dz_1 = np.array([])
-    pfCandD0Dphi_1 = np.array([])
     pfCandPuppiWeight_1 = np.array([])
     pfCandHits_1 = np.array([])
     pfCandPixHits_1 = np.array([])
@@ -85,7 +81,6 @@ if __name__ == '__main__':
         outputs = net(data)
         end = time.time()
         time_per_event += (end - start)/batch_size
-
         score = np.append(score,  outputs.detach().numpy())
         target = np.append(target, labels.detach().numpy()[:, 0])
         mva = np.append(mva, labels.detach().numpy()[:, 1])
@@ -108,32 +103,28 @@ if __name__ == '__main__':
         pfCandD0_1 = np.append(pfCandD0_1, labels.detach().numpy()[:, 18])
         pfCandD0Err_1 = np.append(pfCandD0Err_1, labels.detach().numpy()[:, 19])
         pfCandD0Sig_1 = np.append(pfCandD0Sig_1, labels.detach().numpy()[:, 20])
-        pfCandPtRelPtRel_1 = np.append(pfCandPtRelPtRel_1, labels.detach().numpy()[:, 21])
-        pfCandD0D0_1 = np.append(pfCandD0D0_1, labels.detach().numpy()[:, 22])
-        pfCandDzDz_1 = np.append(pfCandDzDz_1, labels.detach().numpy()[:, 23])
-        pfCandD0Dz_1 = np.append(pfCandD0Dz_1, labels.detach().numpy()[:, 24])
-        pfCandD0Dphi_1 = np.append(pfCandD0Dphi_1, labels.detach().numpy()[:, 25])
-        pfCandPuppiWeight_1 = np.append(pfCandPuppiWeight_1, labels.detach().numpy()[:, 26])
-        pfCandHits_1 = np.append(pfCandHits_1, labels.detach().numpy()[:, 27])
-        pfCandPixHits_1 = np.append(pfCandPixHits_1, labels.detach().numpy()[:, 28])
-        pfCandLostInnerHits_1 = np.append(pfCandLostInnerHits_1, labels.detach().numpy()[:, 29])
-        pfCandDVx_1 = np.append(pfCandDVx_1, labels.detach().numpy()[:, 30])
-        pfCandDVy_1 = np.append(pfCandDVy_1, labels.detach().numpy()[:, 31])
-        pfCandDVz_1 = np.append(pfCandDVz_1, labels.detach().numpy()[:, 32])
-        pfCandD_1 = np.append(pfCandD_1, labels.detach().numpy()[:, 33])
-        pfCandPdgid_1 = np.append(pfCandPdgid_1, labels.detach().numpy()[:, 34])
-        pfCandCharge_1 = np.append(pfCandCharge_1, labels.detach().numpy()[:, 35])
-        pfCandFromPV_1 = np.append(pfCandFromPV_1, labels.detach().numpy()[:, 36])
-        pfCandVtxQuality_1 = np.append(pfCandVtxQuality_1, labels.detach().numpy()[:, 37])
-        pfCandTauIndMatch_1 = np.append(pfCandTauIndMatch_1, labels.detach().numpy()[:, 38])
-        pfCandHighPurityTrk_1 = np.append(pfCandHighPurityTrk_1, labels.detach().numpy()[:, 39])
-        pfCandIsBarrel_1 = np.append(pfCandIsBarrel_1, labels.detach().numpy()[:, 40])
-        lepHasSV_1 = np.append(lepHasSV_1, labels.detach().numpy()[:, 41])
+        pfCandPuppiWeight_1 = np.append(pfCandPuppiWeight_1, labels.detach().numpy()[:, 21])
+        pfCandHits_1 = np.append(pfCandHits_1, labels.detach().numpy()[:, 22])
+        pfCandPixHits_1 = np.append(pfCandPixHits_1, labels.detach().numpy()[:, 23])
+        pfCandLostInnerHits_1 = np.append(pfCandLostInnerHits_1, labels.detach().numpy()[:, 24])
+        pfCandDVx_1 = np.append(pfCandDVx_1, labels.detach().numpy()[:, 25])
+        pfCandDVy_1 = np.append(pfCandDVy_1, labels.detach().numpy()[:, 26])
+        pfCandDVz_1 = np.append(pfCandDVz_1, labels.detach().numpy()[:, 27])
+        pfCandD_1 = np.append(pfCandD_1, labels.detach().numpy()[:, 28])
+        pfCandPdgid_1 = np.append(pfCandPdgid_1, labels.detach().numpy()[:, 29])
+        pfCandCharge_1 = np.append(pfCandCharge_1, labels.detach().numpy()[:, 30])
+        pfCandFromPV_1 = np.append(pfCandFromPV_1, labels.detach().numpy()[:, 31])
+        pfCandVtxQuality_1 = np.append(pfCandVtxQuality_1, labels.detach().numpy()[:, 32])
+        pfCandTauIndMatch_1 = np.append(pfCandTauIndMatch_1, labels.detach().numpy()[:, 33])
+        pfCandHighPurityTrk_1 = np.append(pfCandHighPurityTrk_1, labels.detach().numpy()[:, 34])
+        pfCandIsBarrel_1 = np.append(pfCandIsBarrel_1, labels.detach().numpy()[:, 35])
+        lepHasSV_1 = np.append(lepHasSV_1, labels.detach().numpy()[:, 36])
+
         sig += target.sum()
         bkg += len(target) - target.sum()
         count += 1
 
-    file = open("{0}eval.log".format(TRAINING_RES), 'w')
+    file = open("{0}evaluation.log".format(TRAINING_RES), 'w')
     file.write("Batch size: {0}; Average time per event: {1}; Signal: {2}; Background: {3}".format(batch_size, time_per_event/count, sig, bkg))
     file.close()
 
@@ -159,11 +150,6 @@ if __name__ == '__main__':
                             'pfCandD0_1': [i for i in pfCandD0_1],
                             'pfCandD0Err_1': [i for i in pfCandD0Err_1],
                             'pfCandD0Sig_1': [i for i in pfCandD0Sig_1],
-                            'pfCandPtRelPtRel_1': [i for i in pfCandPtRelPtRel_1],
-                            'pfCandD0D0_1': [i for i in pfCandD0D0_1],
-                            'pfCandDzDz_1': [i for i in pfCandDzDz_1],
-                            'pfCandD0Dz_1': [i for i in pfCandD0Dz_1],
-                            'pfCandD0Dphi_1': [i for i in pfCandD0Dphi_1],
                             'pfCandPuppiWeight_1': [i for i in pfCandPuppiWeight_1],
                             'pfCandHits_1': [i for i in pfCandHits_1],
                             'pfCandPixHits_1': [i for i in pfCandPixHits_1],
@@ -179,5 +165,6 @@ if __name__ == '__main__':
                             'pfCandTauIndMatch_1': [i for i in pfCandTauIndMatch_1],
                             'pfCandHighPurityTrk_1': [i for i in pfCandHighPurityTrk_1],
                             'pfCandIsBarrel_1': [i for i in pfCandIsBarrel_1],
-                            'lepHasSV_1': [i for i in lepHasSV_1]})
+                            'lepHasSV_1': [i for i in lepHasSV_1]
+                            })
     df_eval.to_csv("{1}EvalResults/ECN_{0}.csv".format(epoch, TRAINING_RES), index=False)
