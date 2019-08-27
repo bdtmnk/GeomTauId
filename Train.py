@@ -1,49 +1,20 @@
 import numpy as np
-from LoadData import TauIdDataset, get_weights
+from LoadData import TauIdDataset, get_weights,LoadData
 import torch
 from torch_geometric.data import Data, DataLoader
-from LoadModel import Net
+from LoadModel import ECN2
 import torch.nn.functional as F
 import torch.optim as optim
 from Logger import  Logger
+import time
 
+# 44419 parameters
+# DPF: 8838945 parameters
 TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
 TEST_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/test_samples/"
-# TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/ECN/"
-
-
-FEATURES = [
-         'nLooseTaus',
-         'nPFCands_1',
-         'lepRecoPt_1',
-         'lepRecoEta_1',
-         'pfCandPt_1',
-         'pfCandPz_1',
-         'pfCandPtRel_1',
-         'pfCandPzRel_1',
-         'pfCandDr_1',
-         'pfCandDEta_1',
-         'pfCandDPhi_1',
-         'pfCandEta_1',
-         'pfCandDz_1',
-         'pfCandDzErr_1',
-         'pfCandDzSig_1',
-         'pfCandD0_1',
-         'pfCandD0Err_1',
-         'pfCandD0Sig_1',
-         'pfCandPtRelPtRel_1',
-         'pfCandD0D0_1',
-         'pfCandDzDz_1',
-         'pfCandD0Dz_1',
-         'pfCandD0Dphi_1',
-         'pfCandPuppiWeight_1',
-         'pfCandHits_1',
-         'pfCandPixHits_1',
-         'pfCandDVx_1',
-         'pfCandDVy_1',
-         'pfCandDVz_1',
-         'pfCandD_1'
-    ]
+TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/ECN9/"
+RESUME_TRAINING = False
+EPOCH = 0
 
 
 def load_model(PATH):
@@ -51,117 +22,99 @@ def load_model(PATH):
     net = checkpoint['net']
     optimizer = checkpoint['optimizer']
     epoch = checkpoint['epoch']
-    loss = checkpoint['loss']
-    return net, optimizer, epoch, loss
+    scheduler = checkpoint['scheduler']
+    return net, optimizer, epoch, scheduler
 
-
-bs_range = [256, 512, 1024, 4096]
 
 if __name__ == "__main__":
+    start = time.time()
+    # Prepare train data
+    # train_dataset = TauIdDataset(TRAIN_SET, num=10000)
+    # train_length = train_dataset.len
+    # train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=True, num_workers=1)
+    load_train_data = LoadData(TRAIN_SET)
+    train_data = load_train_data.load_data(100000)
+    train_loader = DataLoader(train_data, batch_size=1000, shuffle=True, num_workers=1)
 
-    for bs in bs_range:
-        TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/GCN{0}/" .format( str(bs))
-        if bs == 256:
-            RESUME_TRAINING = True
-            EPOCH = 7
-        else:
-            RESUME_TRAINING = False
-            EPOCH = 0
-        # Prepare train data
-        train_dataset = TauIdDataset(TRAIN_SET, num=4096)
-        train_length = train_dataset.len
-        train_loader = DataLoader(train_dataset, batch_size=bs, shuffle=True, num_workers=10)
+    train = time.time()
+    # print(train_length)
+    print("Train data loaded: {0}".format(train - start))
+    # Prepare test data
+    load_test_data = LoadData(TEST_SET)
+    test_data = load_test_data.load_data(5000)
+    test_loader = DataLoader(test_data, batch_size=5000, shuffle=True, num_workers=1)
+    test = time.time()
+    print("Test data loaded: {0}".format(test - train))
 
-        print(train_length)
+    # Load or create the network
+    if RESUME_TRAINING:
+        net, optimizer, _, scheduler = load_model('{0}ECN_{1}.pt'.format(TRAINING_RES, EPOCH))
+        print ("Model loaded")
+    else:
+        net = ECN2()
+        optimizer = torch.optim.SGD(net.parameters(), lr=0.5, momentum=0.9)
+        EPOCH = 0
 
-        # Prepare test data
-        test_dataset = TauIdDataset(TEST_SET, num=512, mode='test')
-        test_length = test_dataset.len
-        test_loader = DataLoader(test_dataset, batch_size=test_length, shuffle=True, num_workers=10)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, 100)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device)
 
-        # Load or create the network
-        if RESUME_TRAINING:
-            net, optimizer, _, _ = load_model('{0}GCN_{1}.pt'.format(TRAINING_RES, EPOCH))
-            print ("Model loaded")
-        else:
-            net = Net()
-            optimizer = optim.Adam(net.parameters(), lr=0.01)
-            EPOCH = 0
+    i = 1
 
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        print(device)
+    log = Logger(TRAINING_RES, 'ECN',  RESUME_TRAINING)
 
-        # net = nn.DataParallel(net)
+    torch.set_num_threads(1)
 
-        i = 1
-        # if RESUME_TRAINING:
-        #     log = open(TRAINING_RES + "train.log", 'a')
-        # else:
-        #     log = open(TRAINING_RES + "train.log", 'w')
-        # start_time = time.time()
+    for epoch in range(EPOCH + 1, 101):
+        for data in iter(train_loader):
 
-        log = Logger(TRAINING_RES, RESUME_TRAINING)
+            inputs, labels = data.x, data.y.type(torch.FloatTensor)
 
-        for epoch in range(EPOCH + 1, 11):
-            # Loss = acc = auc = prec = rec = 0
-            j = k = 0
-            for data in iter(train_loader):
-                # df = pd.DataFrame()
-                # for k in range(len(FEATURES)):
-                #     df[FEATURES[k]] = pd.Series(df_vars.detach().numpy()[:, k])
-                # df.to_csv(
-                #     "{0}hists/data_e{1}b{2}.csv".format(TRAINING_RES, epoch, j),
-                #     index=False)
+            # Compute the weights of events
+            pt_train = inputs.detach().numpy()[:, 3]
+            _, ind = np.unique(data.batch, return_index=True)
+            pt_train = pt_train[ind]
+            Y = labels.detach().numpy()
+            weight = get_weights(pt_train, Y)
 
-                inputs, labels = data.x, data.y.type(torch.FloatTensor)
+            # print("Input shape", inputs.shape)
+            # print("Labels shape", labels.shape)
 
-                # Compute the weights of events
-                pt_train = inputs.detach().numpy()[:, 3]
-                _, ind = np.unique(data.batch, return_index=True)
-                pt_train = pt_train[ind]
-                Y = labels.detach().numpy()
-                weight = get_weights(pt_train, Y)
+            # zero the parameter gradients
+            optimizer.zero_grad()
+            # print("Num of features:", data.num_features)
 
-                print("Input shape", inputs.shape)
-                print("Labels shape", labels.shape)
+            # forward + backward + optimize
+            outputs = net(data)
+            # print("Output shape", outputs.shape)
+            loss = F.binary_cross_entropy(outputs, labels, weight=weight)
+            loss.backward()
+            optimizer.step()
+            # print(loss)
+            log.eval_train(loss, labels, outputs)
+        scheduler.step()
 
-                # zero the parameter gradients
-                optimizer.zero_grad()
-                print("Num of features:", data.num_features)
+        log.save_train(epoch)
+        torch.save({
+            'epoch': epoch,
+            'net': net,
+            'optimizer': optimizer,
+            'loss': loss,
+            'scheduler': scheduler
+        }, '{0}ECN_{1}.pt'.format(TRAINING_RES, epoch))
 
-                # forward + backward + optimize
-                outputs = net(data)
-                print("Output shape", outputs.shape)
-                # loss = F.nll_loss(outputs, labels, weight=weight)
-                loss = F.binary_cross_entropy(outputs, labels, weight=weight)
-                loss.backward()
-                optimizer.step()
-                print(loss)
-
-                log.eval_train(loss, labels, outputs)
-                i += 1
-                j += 1
-
-            len = j
-            log.save_train(epoch)
-            torch.save({
-                'epoch': epoch,
-                'net': net,
-                'optimizer': optimizer,
-                'loss': loss,
-            }, '{0}GCN_{1}.pt'.format(TRAINING_RES, epoch))
-
-            if epoch % 10 == 0:
-                with torch.no_grad():
-                    labels_list = []
-                    outputs_list = []
-                    loss_list = []
-                    for data in iter(test_loader):
-                        inputs, labels = data.x, data.y.type(torch.FloatTensor)
-                        outputs = net(data)
-                        labels_list.append(labels)
-                        outputs_list.append(outputs)
-                        loss_list.append(F.binary_cross_entropy(outputs, labels[:, 0]))
-                log.eval_test(epoch, loss_list, labels_list, outputs_list)
-        log.close()
+        if epoch % 10 == 0:
+            train_data = load_train_data.load_data(100000)
+            with torch.no_grad():
+                labels_list = []
+                outputs_list = []
+                loss_list = []
+                for data in iter(test_loader):
+                    inputs, labels = data.x, data.y.type(torch.FloatTensor)
+                    outputs = net(data)
+                    labels_list.append(labels)
+                    outputs_list.append(outputs)
+                    loss_list.append(F.binary_cross_entropy(outputs, labels))
+            log.eval_test(epoch, loss_list, labels_list, outputs_list)
+    log.close()
     print('Finished Training')

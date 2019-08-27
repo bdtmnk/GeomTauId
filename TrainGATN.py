@@ -2,7 +2,7 @@ import numpy as np
 from LoadData import TauIdDataset, get_weights
 import torch
 from torch_geometric.data import Data, DataLoader
-from LoadModel import ECN5
+from LoadModel import ECN
 import torch.nn.functional as F
 import torch.optim as optim
 from Logger import  Logger
@@ -11,9 +11,9 @@ from Logger import  Logger
 # DPF: 8838945 parameters
 TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
 TEST_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/test_samples/"
-TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/ECN5/"
-RESUME_TRAINING = True
-EPOCH = 7
+TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/ECN/"
+RESUME_TRAINING = False
+EPOCH = 0
 
 
 def load_model(PATH):
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # Prepare train data
     train_dataset = TauIdDataset(TRAIN_SET, num=4096)
     train_length = train_dataset.len
-    train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True, num_workers=5)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=5)
 
     print(train_length)
 
@@ -41,14 +41,15 @@ if __name__ == "__main__":
     # Load or create the network
     if RESUME_TRAINING:
         net, optimizer, _, _ = load_model('{0}ECN_{1}.pt'.format(TRAINING_RES, EPOCH))
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = 0.01
+        # for param_group in optimizer.param_groups:
+        #     param_group['lr'] = 0.01
         print ("Model loaded")
     else:
-        net = ECN5()
-        optimizer = optim.Adam(net.parameters(), lr=0.01)
+        net = ECN()
+        optimizer = torch.optim.SGD(net.parameters(), lr=0.1, momentum=0.9)
         EPOCH = 0
 
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, 50)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
 
@@ -102,6 +103,7 @@ if __name__ == "__main__":
             log.eval_train(loss, labels, outputs)
             i += 1
             j += 1
+        scheduler.step()
 
         len = j
         log.save_train(epoch)
