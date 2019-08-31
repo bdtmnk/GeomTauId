@@ -1,3 +1,8 @@
+"""
+Writen by Leonid Didukh
+Modified by K. Bukyn
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
