@@ -1,7 +1,9 @@
-import torch
-from LoadDataLegacy import TauIdDataset
-from torch_geometric.data import  DataLoader
 import time
+
+import torch
+from torch_geometric.data import DataLoader
+
+from LoadDataLegacy import TauIdDataset
 
 TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
 TEST_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/test_samples/"
@@ -11,8 +13,14 @@ batch_size = 2048
 num = 2048
 
 
-def load_model(PATH):
-    checkpoint = torch.load(PATH)
+def load_model(path):
+    """
+    Load model from .pt file.
+
+    :param path: Path to the .pt file where the model is stored
+    :return: Network, optimizer, number of epoch when the network was stored, LR scheduler
+    """
+    checkpoint = torch.load(path)
     net = checkpoint['net']
     optimizer = checkpoint['optimizer']
     epoch = checkpoint['epoch']

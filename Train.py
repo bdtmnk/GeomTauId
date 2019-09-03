@@ -1,15 +1,15 @@
-import numpy as np
-from LoadData import TauIdDataset, get_weights,LoadData
-import torch
-from torch_geometric.data import Data, DataLoader
-from LoadModel import ECN2
-import torch.nn.functional as F
-import torch.optim as optim
-from Logger import  Logger
 import time
 
-# 44419 parameters
-# DPF: 8838945 parameters
+import numpy as np
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+from torch_geometric.data import DataLoader
+
+from LoadData import TauIdDataset, get_weights, LoadData
+from LoadModel import ECN2
+from Logger import Logger
+
 TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
 TEST_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/test_samples/"
 TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/ECN9/"
@@ -17,8 +17,14 @@ RESUME_TRAINING = False
 EPOCH = 0
 
 
-def load_model(PATH):
-    checkpoint = torch.load(PATH)
+def load_model(path):
+    """
+    Load model from .pt file.
+
+    :param path: Path to the .pt file where the model is stored
+    :return: Network, optimizer, number of epoch when the network was stored, LR scheduler
+    """
+    checkpoint = torch.load(path)
     net = checkpoint['net']
     optimizer = checkpoint['optimizer']
     epoch = checkpoint['epoch']
@@ -29,20 +35,24 @@ def load_model(PATH):
 if __name__ == "__main__":
     start = time.time()
     # Prepare train data
-    # train_dataset = TauIdDataset(TRAIN_SET, num=10000)
+    # train_dataset = TauIdDataset(TRAIN_SET, num=5000)
     # train_length = train_dataset.len
     # train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=True, num_workers=1)
     load_train_data = LoadData(TRAIN_SET)
     train_data = load_train_data.load_data(100000)
+    print(train_data)
     train_loader = DataLoader(train_data, batch_size=1000, shuffle=True, num_workers=1)
 
     train = time.time()
     # print(train_length)
     print("Train data loaded: {0}".format(train - start))
     # Prepare test data
-    load_test_data = LoadData(TEST_SET)
-    test_data = load_test_data.load_data(5000)
-    test_loader = DataLoader(test_data, batch_size=5000, shuffle=True, num_workers=1)
+    test_dataset = TauIdDataset(TEST_SET, num=5000)
+    test_length = test_dataset.len
+    test_loader = DataLoader(test_dataset, batch_size=5000, shuffle=True, num_workers=1)
+    # load_test_data = LoadData(TEST_SET)
+    # test_data = load_test_data.load_data(5000)
+    # test_loader = DataLoader(test_data, batch_size=5000, shuffle=True, num_workers=1)
     test = time.time()
     print("Test data loaded: {0}".format(test - train))
 

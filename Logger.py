@@ -1,13 +1,18 @@
 import time
-import torch
+
 import numpy as np
-import pandas as pd
-from sklearn.metrics import  accuracy_score, roc_auc_score,  precision_score, recall_score
+from sklearn.metrics import accuracy_score, roc_auc_score, precision_score, recall_score
 
 
-class Logger():
+class Logger:
+    """Class for logs saving during training"""
 
     def __init__(self, training_res, model_name,  resume_training=False):
+        """
+        :param training_res: Directory where the logs will be stored
+        :param model_name: Name of the model for which the logs are created
+        :param resume_training: If the set  to False, the log file will be overwritten, otherwise logs will be appended to the existing file
+        """
         if resume_training:
             self.log = open(training_res + "train.log", 'a')
         else:
@@ -18,10 +23,16 @@ class Logger():
         self.model_name = model_name
 
     def eval_train(self, Loss, labels, outputs):
+        """
+        Evaluate the network performance (should be called after the each batch)
 
-        # train_loss.append(np.array(loss.detach().numpy(), dtype="int32"))
+        :param Loss: Loss object
+        :param labels: Targets for current batch
+        :param outputs: Predictions for the current batch
+        :return: None
+        """
+
         self.loss += Loss.item()
-        # _, prediction = torch.max(outputs.data, 1)
         target = labels.detach().numpy().astype(int)
         score = outputs.detach().numpy()
         prediction = np.around(score)
@@ -35,6 +46,11 @@ class Logger():
         self.count += 1
 
     def save_train(self, epoch):
+        """
+        Write the results of evaluation to the log file (should be called after each epoch)
+        :param epoch: Number of epoch
+        :return: None
+        """
         epoch_time = time.time() - self.start_time
         try:
             self.log.write(
@@ -49,17 +65,9 @@ class Logger():
         loss = 0
         score = np.array([])
         target = np.array([])
-        # pt = np.array([])
-        # eta = np.array([])
-        # decay_mode = np.array([])
-        # mva = np.array([])
         for i in range(len(Loss)):
             score = np.append(score, outputs[i].detach().numpy())
             target = np.append(target, labels[i].detach().numpy())
-            # pt = np.append(pt, labels[i].detach().numpy()[:, 1])
-            # eta = np.append(eta, labels[i].detach().numpy()[:, 2])
-            # decay_mode = np.append(decay_mode, labels[i].detach().numpy()[:, 3])
-            # mva = np.append(mva, labels[i].detach().numpy()[:, 4])
             loss += Loss[i].item()
         prediction = np.around(score)
         acc = accuracy_score(target, prediction)
@@ -73,10 +81,10 @@ class Logger():
             print(str(e))
         self.log.flush()
 
-        # df_eval = pd.DataFrame({"score": [i for i in score], 'label': [i for i in target], 'pt': [i for i in pt],
-        #                     'eta': [i for i in eta], 'decay_mode': [i for i in decay_mode],
-        #                     'mva': [i for i in mva]})
-        # df_eval.to_csv("{1}EvalResults/{2}_{0}.csv".format(epoch, self.training_res, self.model_name), index=False)
-
     def close(self):
+        """
+        Close the log file (should be called after training end)
+
+        :return: None
+        """
         self.log.close()

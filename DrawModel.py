@@ -11,8 +11,14 @@ batch_size = 2048
 num = 16384
 
 
-def load_model(PATH):
-    checkpoint = torch.load(PATH)
+def load_model(path):
+    """
+    Load model from .pt file.
+
+    :param path: Path to the .pt file where the model is stored
+    :return: Network, optimizer, number of epoch when the network was stored, LR scheduler
+     """
+    checkpoint = torch.load(path)
     net = checkpoint['net']
     optimizer = checkpoint['optimizer']
     epoch = checkpoint['epoch']

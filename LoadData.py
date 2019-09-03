@@ -1,12 +1,12 @@
-import pandas as pd
-import numpy as np
 import random
-from torch_geometric.data import Dataset, Data, InMemoryDataset
 from glob import glob
-import uproot
+
+import numpy as np
+import pandas as pd
 import torch
-# from random import randint
+import uproot
 from pandas.api.types import CategoricalDtype
+from torch_geometric.data import Dataset, Data
 
 TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/histograms/"
 
@@ -95,33 +95,14 @@ VECT_FEATURES = np.char.array([
 TARGET = np.char.array(['lepTauMatch_1', ])
 
 
-# def index_choice(root_file, file_name):
-#     """
-#     :param root_file:
-#     :param file_name:
-#     :return:
-#     """
-#
-#     df = pd.DataFrame()
-#     df['decay_mode'] = root_file['decayMode_1'].array()
-#     df['el_match'] = root_file["lepEleMatch_1"].array()
-#     df['mu_match'] = root_file["lepMuMatch_1"].array()
-#     df['tau_match'] = root_file["lepTauMatch_1"].array()
-#     df['jet_match'] = 1 - df['el_match'] - df['tau_match'] - df['mu_match']
-#     index = 0
-#     if "WJ" in file_name:
-#         index = np.where((df['jet_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
-#         index = random.choice(index)
-#     elif "DY" in file_name:
-#         index = np.where((df['tau_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
-#         index = random.choice(index)
-#     return index
-
-def get_indices(root_file, file_name):
+def index_choice(root_file, file_name):
     """
-    :param root_file:
-    :param file_name:
-    :return:
+    Get one random index from the given file
+
+    Only selecting tau from Drell-Yan events and jets from W+jets events, select decay modes 0, 1 and 10 for both tau and jets
+    :param root_file: Opened ROOT file
+    :param file_name: Name of the ROOT file
+    :return: One chosen index
     """
 
     df = pd.DataFrame()
@@ -133,15 +114,46 @@ def get_indices(root_file, file_name):
     index = 0
     if "WJ" in file_name:
         index = np.where((df['jet_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
-        # index = random.choice(index)
+        index = random.choice(index)
     elif "DY" in file_name:
         index = np.where((df['tau_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
-        # index = random.choice(index)
-    # print(index)
+        index = random.choice(index)
+    return index
+
+
+def get_indices(root_file, file_name):
+    """
+    Get the indices of all the appropriate events from the given file
+
+    Only selecting tau from Drell-Yan events and jets from W+jets events, select decay modes 0, 1 and 10 for both tau and jets
+    :param root_file: Opened ROOT file
+    :param file_name: Name of the ROOT file
+    :return: List of the indices
+    """
+
+    df = pd.DataFrame()
+    df['decay_mode'] = root_file['decayMode_1'].array()
+    df['el_match'] = root_file["lepEleMatch_1"].array()
+    df['mu_match'] = root_file["lepMuMatch_1"].array()
+    df['tau_match'] = root_file["lepTauMatch_1"].array()
+    df['jet_match'] = 1 - df['el_match'] - df['tau_match'] - df['mu_match']
+    index = 0
+    if "WJ" in file_name:
+        index = np.where((df['jet_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
+    elif "DY" in file_name:
+        index = np.where((df['tau_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
     return index
 
 
 def get_weights(pt_train, Y):
+    """
+    Get weights for the sample
+
+    Reweighting is applied to flatten tau $p_T$ spectrum
+    :param pt_train: $p_T$ list for the sample
+    :param Y: Labels for the sample
+    :return: Pytorch tensor with the weights
+    """
     W_train = np.zeros(len(Y)) + 1
     bins_by_pt = np.append(np.arange(30, 100, 10), [10000])
     ptBkg = pt_train[Y != 1]
@@ -166,9 +178,15 @@ def get_weights(pt_train, Y):
 
 
 class TauIdDataset(Dataset):
+    """Class for data loading from disk."""
     
-    def __init__(self, root, mode='train', num = 1024, nfiles = 1, transform=None, pre_transform=None):
-        # super(TauIdDataset, self).__init__()
+    def __init__(self, root, mode='train', num = 1024, nfiles = 1):
+        """
+        :param root: Path to directory where ROOT files with data are stored
+        :param mode: 'train' or 'test', in second case loads all the variables from tree with labels for evaluation
+        :param num: Number of events to be used in one epoch
+        :param nfiles: Number of files to load (the same number is used for signal and background files)
+        """
         self.sig_files = glob(root+"DY*.root")
         self.bkg_files = glob(root+"WJ*.root")
         self.filenames = []
@@ -232,6 +250,10 @@ class TauIdDataset(Dataset):
 
     def __getitem__(self, index):
         """
+        Get event with given index.
+
+        :param index: Index of event to select
+        :return: Pytorch tensor with features and labels for one event
         """
         # for i in range(self.nfiles):
         #     print(len(self.indices[i]))
@@ -264,11 +286,16 @@ class TauIdDataset(Dataset):
                 return self.get_tensor(self.data[i].loc[j], self.test_data[i].loc[j])
 
     def __len__(self):
-        """
-        """
         return self.len
 
     def reload_file(self, index):
+        """
+        Load new file instead of file with given index.
+
+        Currently function isn't working properly
+        :param index: Index of file to delete.
+        :return: None
+        """
         filename = self.filenames[index]
         self.indices.remove(self.indices[index])
         self.data.remove(self.data[index])
@@ -295,15 +322,34 @@ class TauIdDataset(Dataset):
             self.data[i] = self.pre_process(self.data[i])
 
     def norm_min_max(self, value):
+        """
+        Normalise given feature.
+
+        :param value: Pandas series with feature to normalise
+        :return: Pandas series with normalised feature
+        """
         feature = value.name
         min = self.min.get(self.features[self.features == feature].index[0])
         max = self.max.get(self.features[self.features == feature].index[0])
         return (value - min) / (max - min)
 
     def set_category(self, value):
+        """
+        Apply one-hot encoding to categorical feature.
+
+        :param value: Pandas series with categorical feature
+        :return: Dataframe with encoded feature
+        """
         return  value.astype(self.cat_types[value.name])
 
     def get_tensor(self, df, df_test=None):
+        """
+        Transform dataframe to pytorch tensor with features and labels.
+
+        :param df: Dataframe to transform
+        :param df_test: Dataframe with not pre-transformed features (only needed if mode='test')
+        :return: Pytorch tensor
+        """
         label = df['lepTauMatch_1'].iloc[:1]
         df = df.drop(columns=TARGET)
         pos = torch.tensor(df[COORDINATES].values)
@@ -360,7 +406,10 @@ class TauIdDataset(Dataset):
 
     def pre_process(self, df):
         """
+        Pre-process the input data.
 
+        :param df: Dataframe with not pre-transformed features
+        :return: Dataframe with pre-transformed features
         """
         if self.mode == 'test':
             df = df[np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))]
@@ -372,8 +421,12 @@ class TauIdDataset(Dataset):
 
 
 class LoadData:
+    """Class for data loading (doesn't work currently)"""
 
     def __init__(self, root):
+        """
+        :param root: Path to directory where ROOT files with data are stored
+        """
         self.sig_files = glob(root+"DY*.root")
         self.bkg_files = glob(root+"WJ*.root")
         self.cat_types = pd.Series([CategoricalDtype(categories=[0, 1, 10], ordered=True),
@@ -387,6 +440,12 @@ class LoadData:
         self.min = pd.read_csv("{0}min.csv".format(TRAINING_RES))['val'].astype('float32')
         
     def load_data(self, num):
+        """
+        Load specified number of events.
+
+        :param num: Number of events to load
+        :return: List of pytorch tensors
+        """
         data = []
         while len(data) < (num / 2):
             print(len(data))
@@ -398,11 +457,11 @@ class LoadData:
                 np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))).loc[indices].astype(
                 'float32')
             df = self.pre_process(df)
-            data = df.apply(self.get_tensor)
-            # for i in np.unique(df.index.get_level_values('entry').to_numpy()):
-            #     data.append(self.get_tensor(df.loc[i]))
-            #     if len(data) >= (num / 2):
-            #         break
+            # data = df.apply(self.get_tensor)
+            for i in np.unique(df.index.get_level_values('entry').to_numpy()):
+                data.append(self.get_tensor(df.loc[i]))
+                if len(data) >= (num / 2):
+                    break
         data = data[:num/2]
 
         while len(data) < num:
@@ -414,17 +473,21 @@ class LoadData:
                 np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))).loc[indices].astype(
                 'float32')
             df = self.pre_process(df)
-            data = df.apply(self.get_tensor)
-            # for i in np.unique(df.index.get_level_values('entry').to_numpy()):
-            #     data.append(self.get_tensor(df.loc[i]))
-            #     if len(data) >= num:
-            #         break
-        data = data[:num / 2]
+            # data = df.apply(self.get_tensor)
+            for i in np.unique(df.index.get_level_values('entry').to_numpy()):
+                data.append(self.get_tensor(df.loc[i]))
+                if len(data) >= num:
+                    break
+        data = data[:num]
+        print(data)
         return random.shuffle(data)
 
     def pre_process(self, df):
         """
+        Pre-process the input data.
 
+        :param df: Dataframe with not pre-transformed features
+        :return: Dataframe with pre-transformed features
         """
         df[FEATURES] = df[FEATURES].apply(self.norm_min_max, axis=0)
         df = pd.concat([df[np.concatenate((FEATURES, BINARY_FEATURES, TARGET))],
@@ -433,15 +496,33 @@ class LoadData:
         return df
     
     def norm_min_max(self, value):
+        """
+        Normalise given feature.
+
+        :param value: Pandas series with feature to normalise
+        :return: Pandas series with normalised feature
+        """
         feature = value.name
         min = self.min.get(self.features[self.features == feature].index[0])
         max = self.max.get(self.features[self.features == feature].index[0])
         return (value - min) / (max - min)
 
     def set_category(self, value):
+        """
+        Apply one-hot encoding to categorical feature.
+
+        :param value: Pandas series with categorical feature
+        :return: Dataframe with encoded feature
+        """
         return  value.astype(self.cat_types[value.name])
 
     def get_tensor(self, df):
+        """
+        Transform dataframe to pytorch tensor with features and labels.
+
+        :param df: Dataframe to transform
+        :return: Pytorch tensor
+        """
         label = df['lepTauMatch_1'].iloc[:1]
         df = df.drop(columns=TARGET)
         pos = torch.tensor(df[COORDINATES].values)

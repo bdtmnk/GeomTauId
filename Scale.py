@@ -1,14 +1,15 @@
-import numpy as np
-import uproot
-import pandas as pd
 from glob import glob
+
+import numpy as np
+import pandas as pd
+import uproot
 
 TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
 TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/histograms/"
 
-##WJ file list with the jets:
+# WJ file list with the jets:
 WJ_list = glob(TRAIN_SET +"WJ*.root")
-## DY file list
+# DY file list
 DY_list = glob(TRAIN_SET+"DY*.root")
 
 FEATURES = [
@@ -75,10 +76,15 @@ VECT_FEATURES = [
 
 
 def read_max(file_names):
+    """
+    Find maximal values for all the specified features.
+
+    :param file_names: Names of files among which to find the maximum
+    :return: Maximal values for all the specified features in each file (list with length equal to the number of files)
+    """
     # random.shuffle(file_names)
     # file_names = file_names[]
     dm = "decayMode_1"
-    pt = "lepRecoPt_1"
     el_match = "lepEleMatch_1"
     mu_match = "lepMuMatch_1"
     tau_match = "lepTauMatch_1"
@@ -96,6 +102,12 @@ def read_max(file_names):
 
 
 def read_min(file_names):
+    """
+    Find minimal values for all the specified features.
+
+    :param file_names: Names of files among which to find the minimum
+    :return: Minimal values for all the specified features in each file (list with length equal to the number of files)
+    """
     # random.shuffle(file_names)
     # file_names = file_names[]
     dm = "decayMode_1"

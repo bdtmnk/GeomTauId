@@ -1,11 +1,11 @@
-import pandas as pd
-import numpy as np
 import random
-from torch_geometric.data import Dataset, Data, InMemoryDataset
 from glob import glob
-import uproot
+
+import numpy as np
+import pandas as pd
 import torch
-from pandas.api.types import CategoricalDtype
+import uproot
+from torch_geometric.data import Data, InMemoryDataset
 
 TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/histograms/"
 
@@ -107,9 +107,12 @@ FEATURES = tuple(FEATURES)
 
 def index_choice(root_file, file_name):
     """
-    :param root_file:
-    :param file_name:
-    :return:
+    Get one random index from the given file
+
+    Only selecting tau from Drell-Yan events and jets from W+jets events, select decay modes 0, 1 and 10 for both tau and jets
+    :param root_file: Opened ROOT file
+    :param file_name: Name of the ROOT file
+    :return: One chosen index
     """
 
     df = pd.DataFrame()
@@ -129,6 +132,14 @@ def index_choice(root_file, file_name):
 
 
 def get_weights(pt_train, Y):
+    """
+    Get weights for the sample
+
+    Reweighting is applied to flatten tau $p_T$ spectrum
+    :param pt_train: $p_T$ list for the sample
+    :param Y: Labels for the sample
+    :return: Pytorch tensor with the weights
+    """
     W_train = np.zeros(len(Y)) + 1
     bins_by_pt = np.append(np.arange(30, 100, 10), [10000])
     ptBkg = pt_train[Y != 1]
@@ -153,8 +164,14 @@ def get_weights(pt_train, Y):
 
 
 class TauIdDataset(InMemoryDataset):
+    """Old class for data loading from disk (work slow)."""
 
-    def __init__(self, root, mode='train', num=1024, transform=None, pre_transform=None):
+    def __init__(self, root, mode='train', num=1024):
+        """
+        :param root: Path to directory where ROOT files with data are stored
+        :param mode: 'train' or 'test', in second case loads all the variables from tree with labels for evaluation
+        :param num: Number of events to be used in one epoch
+        """
         filenames = glob(root + "DY*.root") + glob(root + "WJ*.root")
         self.filenames = []
         for i in range(num):
@@ -176,21 +193,26 @@ class TauIdDataset(InMemoryDataset):
 
     def __getitem__(self, index):
         """
+        Get event with given index.
+
+        :param index: Index of event to select
+        :return: Pytorch tensor with features and labels for one event
         """
         root_file = uproot.open(self.filenames[index])
         data = self.process(root_file, self.filenames[index])
         return data
 
     def __len__(self):
-        """
-        """
         return self.len
 
     def process(self, root_file, file_name):
         """
+        Process the data
 
+        :param root_file: Opened ROOT file
+        :param file_name: Name of the ROOT file
+        :return: Pytorch tensor with one event
         """
-        # data_list = []
         entrystart = index_choice(root_file['Candidates'], file_name)
         df = root_file['Candidates'].iterate(entrystart=entrystart, entrystop=entrystart + 1)
         df = df.next()
@@ -335,5 +357,4 @@ class TauIdDataset(InMemoryDataset):
                                 df['pfCandIsBarrel_1'][0].astype('int32'),
                                 df['lepHasSV_1'].astype('int32')])
             data.y = torch.tensor([df_[0].values])
-            # data.y = torch.transpose(data.y, 0, 1)
         return data

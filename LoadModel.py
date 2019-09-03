@@ -1,32 +1,36 @@
 import torch
-from torch.nn import Sequential as S, Linear as L, ReLU, BatchNorm1d as BN, Dropout, ELU, Conv1d
-from torch_geometric.nn import GCNConv,  knn_graph, global_mean_pool, global_max_pool,  Reshape, GATConv, PointConv, TopKPooling, GlobalAttention
 import torch.nn.functional as F
-from torch_geometric.nn.conv import MessagePassing
-# from torch_geometric.nn.pool import EdgePooling
-from math import ceil
+from torch.nn import Sequential as S, Linear as L, ReLU, BatchNorm1d as BN, Dropout
+from torch_geometric.nn import GCNConv, knn_graph, global_mean_pool, GATConv, PointConv, TopKPooling, GlobalAttention, EdgeConv
+# from torch_geometric.nn.conv import MessagePassing
 
 
-class EdgeConv(MessagePassing):
-
-    def __init__(self, nn, aggr='mean', **kwargs):
-        super(EdgeConv, self).__init__(aggr=aggr, **kwargs)
-        self.nn = nn
-
-    def forward(self, x, edge_index):
-        """"""
-        x = x.unsqueeze(-1) if x.dim() == 1 else x
-
-        return self.propagate(edge_index, x=x)
-
-    def message(self, x_i, x_j):
-        return self.nn(torch.cat([x_i, x_j - x_i], dim=1))
-
-    def __repr__(self):
-        return '{}(nn={})'.format(self.__class__.__name__, self.nn)
+# class EdgeConv(MessagePassing):
+#
+#     def __init__(self, nn, aggr='mean', **kwargs):
+#         super(EdgeConv, self).__init__(aggr=aggr, **kwargs)
+#         self.nn = nn
+#
+#     def forward(self, x, edge_index):
+#         """"""
+#         x = x.unsqueeze(-1) if x.dim() == 1 else x
+#
+#         return self.propagate(edge_index, x=x)
+#
+#     def message(self, x_i, x_j):
+#         return self.nn(torch.cat([x_i, x_j - x_i], dim=1))
+#
+#     def __repr__(self):
+#         return '{}(nn={})'.format(self.__class__.__name__, self.nn)
 
 
 def MLP(channels):
+    """
+    Create MLP with specified shape.
+
+    :param channels: Shape of the MLP - list of the format [input size, first hidden layer size, ..., Nth hidden layer size, output size]
+    :return:  MLP object
+    """
     return S(*[
         S(L(channels[i - 1], channels[i]), ReLU(), BN(channels[i]))
         for i in range(1, len(channels))
@@ -34,7 +38,15 @@ def MLP(channels):
 
 
 class ResMLP(torch.nn.Module):
+    """Class of MLP with residual connection."""
+
     def __init__(self, dim, depth):
+        """
+            Create MLP with residual connection of specified shape.
+
+            :param dim: Number of nodes in each layer (will be the same for all the layers)
+            :param depth: Number of layers in MLP
+            """
         super(ResMLP, self).__init__()
         self.layers = []
         for i in range(depth):
@@ -47,8 +59,9 @@ class ResMLP(torch.nn.Module):
         return x + x_res
 
 
-# Graph Convolution Network (don't work)
 class Net(torch.nn.Module):
+    """Network with GCNConv layers (doesn't work)"""
+
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = GCNConv(40, 3)
@@ -93,8 +106,9 @@ class Net(torch.nn.Module):
         return torch.sigmoid(out)[:, 0]
 
 
-# Simple, 1-layer network
 class ECN(torch.nn.Module):
+    """Network with one EdgeConv layer"""
+
     def __init__(self):
         super(ECN, self).__init__()
         self.conv = EdgeConv(MLP([118, 128]), aggr='mean')
@@ -115,8 +129,8 @@ class ECN(torch.nn.Module):
         return torch.sigmoid(out)[:, 0]
 
 
-# Deeper, 3-layer network
 class ECN2(torch.nn.Module):
+    """Network with three EdgeConv layers"""
     def __init__(self):
         super(ECN2, self).__init__()
         # self.conv1 = EdgeConv(MLP([118, 128]), aggr='mean')
@@ -147,8 +161,12 @@ class ECN2(torch.nn.Module):
         return torch.sigmoid(out)[:, 0]
 
 
-# Network with separated features
 class ECN3(torch.nn.Module):
+    """
+    Network with three EdgeConv layer and separated features.
+
+    Features describing the event in general are fed directly into the MLP classifier.
+    """
     def __init__(self):
         super(ECN3, self).__init__()
         self.conv1 = EdgeConv(MLP([102, 64]), aggr='mean')
@@ -180,8 +198,8 @@ class ECN3(torch.nn.Module):
         return torch.sigmoid(out)[:, 0]
 
 
-# ResNet
 class ECN4(torch.nn.Module):
+    """Network with three EdgeConv layers with residual connections"""
     def __init__(self):
         super(ECN4, self).__init__()
         self.conv1 = EdgeConv(S(MLP([118, 128]), ResMLP(128, 2)), aggr='mean')
@@ -209,8 +227,8 @@ class ECN4(torch.nn.Module):
         return torch.sigmoid(out)[:, 0]
 
 
-# DenseNet
 class ECN5(torch.nn.Module):
+    """Network with five EdgeConv layers with dense connections"""
     def __init__(self):
         super(ECN5, self).__init__()
         self.conv1 = EdgeConv(MLP([106, 128]), aggr='mean')
@@ -250,72 +268,8 @@ class ECN5(torch.nn.Module):
         return torch.sigmoid(out)[:, 0]
 
 
-# Network with pooling
-class ECN6(torch.nn.Module):
-    def __init__(self):
-        super(ECN6, self).__init__()
-        self.conv1 = EdgeConv(MLP([106, 128]), aggr='mean')
-        self.conv2 = EdgeConv(MLP([256, 256]), aggr='mean')
-        self.conv3 = EdgeConv(MLP([512, 512]), aggr='mean')
-        self.pool1 = TopKPooling(128, 0.8)
-        self.pool2 = TopKPooling(256, 0.8)
-        self.classifier = MLP([512, 512, 1])
-
-    def forward(self, data):
-        x = data.x
-        pos = data.pos
-        batch = data.batch
-        edge_index = knn_graph(pos, 4, batch, loop=False)
-        x1 = self.conv1(x, edge_index)
-        print('conv1')
-        x1, edge_index,  _, batch, _= self.pool1(x1, edge_index, batch=batch)
-        print('pool1')
-        # edge_index = knn_graph(x1, 4, batch, loop=False)
-        x1 = self.conv2(x1, edge_index)
-        print('conv2')
-        x1, edge_index, _, batch, _ = self.pool2(x1, edge_index, batch=batch)
-        print('pool2')
-        # edge_index = knn_graph(x1, 4, batch, loop=False)
-        x1 = self.conv3(x1, edge_index)
-        print('conv3')
-        x2 = global_mean_pool(x1, batch, size=data.num_graphs)
-        print('pool')
-        out = self.classifier(x2)
-        print('mlp')
-        return torch.sigmoid(out)[:, 0]
-
-
-# Another network with pooling
-class ECN7(torch.nn.Module):
-    def __init__(self):
-        super(ECN7, self).__init__()
-        self.conv1 = EdgeConv(MLP([106, 128]), aggr='mean')
-        self.conv2 = EdgeConv(MLP([256, 256]), aggr='mean')
-        self.conv3 = EdgeConv(MLP([512, 512]), aggr='mean')
-        self.GlobAtt = GlobalAttention(MLP([512, 256, 1]), MLP([512, 512]))
-        self.classifier = MLP([512, 512, 1])
-
-    def forward(self, data):
-        x = data.x
-        pos = data.pos
-        batch = data.batch
-        edge_index = knn_graph(pos, 4, batch, loop=False)
-        x1 = self.conv1(x, edge_index)
-        print('conv1')
-        edge_index = knn_graph(x1, 4, batch, loop=False)
-        x1 = self.conv2(x1, edge_index)
-        print('conv2')
-        edge_index = knn_graph(x1, 4, batch, loop=False)
-        x1 = self.conv3(x1, edge_index)
-        print('conv3')
-        x2 = global_mean_pool(x1, batch, size=data.num_graphs)
-        print('pool')
-        out = self.classifier(x2)
-        print('mlp')
-        return torch.sigmoid(out)[:, 0]
-
-
 class XCN(torch.nn.Module):
+    """Network with one XConv layer"""
     def __init__(self):
         super(XCN, self).__init__()
         self.conv = XConv(40, 128, 30, 4, 10)
@@ -335,28 +289,8 @@ class XCN(torch.nn.Module):
         return torch.sigmoid(out)[:, 0]
 
 
-class GATN(torch.nn.Module):
-    def __init__(self):
-        super(GATN, self).__init__()
-        self.conv = GATConv(59, 128)
-        self.classifier = MLP([128, 256, 1])
-
-    def forward(self, data):
-        x = data.x
-        pos = data.pos
-        batch = data.batch
-        edge_index = knn_graph(pos, 3, batch, loop=False)
-        print('index')
-        x1 = self.conv(x, edge_index)
-        print('conv')
-        x2 = global_mean_pool(x1, batch, size=data.num_graphs)
-        print('pool')
-        out = self.classifier(x2)
-        print('mlp')
-        return torch.sigmoid(out)[:, 0]
-
-
 class PCN(torch.nn.Module):
+    """Network with one PointConv layer"""
     def __init__(self):
         super(PCN, self).__init__()
         self.conv =PointConv(MLP([62, 128]), MLP([128, 128]))
