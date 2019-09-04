@@ -1,27 +1,27 @@
 import torch
 import torch.nn.functional as F
 from torch.nn import Sequential as S, Linear as L, ReLU, BatchNorm1d as BN, Dropout
-from torch_geometric.nn import GCNConv, knn_graph, global_mean_pool, GATConv, PointConv, TopKPooling, GlobalAttention, EdgeConv
-# from torch_geometric.nn.conv import MessagePassing
+from torch_geometric.nn import GCNConv, knn_graph, global_mean_pool, GATConv, PointConv, TopKPooling, GlobalAttention#, EdgeConv
+from torch_geometric.nn.conv import MessagePassing
 
 
-# class EdgeConv(MessagePassing):
-#
-#     def __init__(self, nn, aggr='mean', **kwargs):
-#         super(EdgeConv, self).__init__(aggr=aggr, **kwargs)
-#         self.nn = nn
-#
-#     def forward(self, x, edge_index):
-#         """"""
-#         x = x.unsqueeze(-1) if x.dim() == 1 else x
-#
-#         return self.propagate(edge_index, x=x)
-#
-#     def message(self, x_i, x_j):
-#         return self.nn(torch.cat([x_i, x_j - x_i], dim=1))
-#
-#     def __repr__(self):
-#         return '{}(nn={})'.format(self.__class__.__name__, self.nn)
+class EdgeConv(MessagePassing):
+
+    def __init__(self, nn, aggr='mean', **kwargs):
+        super(EdgeConv, self).__init__(aggr=aggr, **kwargs)
+        self.nn = nn
+
+    def forward(self, x, edge_index):
+        """"""
+        x = x.unsqueeze(-1) if x.dim() == 1 else x
+
+        return self.propagate(edge_index, x=x)
+
+    def message(self, x_i, x_j):
+        return self.nn(torch.cat([x_i, x_j - x_i], dim=1))
+
+    def __repr__(self):
+        return '{}(nn={})'.format(self.__class__.__name__, self.nn)
 
 
 def MLP(channels):
