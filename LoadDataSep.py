@@ -16,37 +16,37 @@ COORDINATES = [
 ]
 
 FEATURES = [
-         'nLooseTaus',
-         'nPFCands_1',
-         'lepRecoPt_1',
-         'lepRecoEta_1',
-         'pfCandPt_1',
-         'pfCandPz_1',
-         'pfCandPtRel_1',
-         'pfCandPzRel_1',
-         'pfCandDr_1',
-         'pfCandDEta_1',
-         'pfCandDPhi_1',
-         'pfCandEta_1',
-         'pfCandDz_1',
-         'pfCandDzErr_1',
-         'pfCandDzSig_1',
-         'pfCandD0_1',
-         'pfCandD0Err_1',
-         'pfCandD0Sig_1',
-         'pfCandPtRelPtRel_1',
-         'pfCandD0D0_1',
-         'pfCandDzDz_1',
-         'pfCandD0Dz_1',
-         'pfCandD0Dphi_1',
-         'pfCandPuppiWeight_1',
-         'pfCandHits_1',
-         'pfCandPixHits_1',
-         'pfCandDVx_1',
-         'pfCandDVy_1',
-         'pfCandDVz_1',
-         'pfCandD_1'
-    ]
+    'nLooseTaus',
+    'nPFCands_1',
+    'lepRecoPt_1',
+    'lepRecoEta_1',
+    'pfCandPt_1',
+    'pfCandPz_1',
+    'pfCandPtRel_1',
+    'pfCandPzRel_1',
+    'pfCandDr_1',
+    'pfCandDEta_1',
+    'pfCandDPhi_1',
+    'pfCandEta_1',
+    'pfCandDz_1',
+    'pfCandDzErr_1',
+    'pfCandDzSig_1',
+    'pfCandD0_1',
+    'pfCandD0Err_1',
+    'pfCandD0Sig_1',
+    'pfCandPtRelPtRel_1',
+    'pfCandD0D0_1',
+    'pfCandDzDz_1',
+    'pfCandD0Dz_1',
+    'pfCandD0Dphi_1',
+    'pfCandPuppiWeight_1',
+    'pfCandHits_1',
+    'pfCandPixHits_1',
+    'pfCandDVx_1',
+    'pfCandDVy_1',
+    'pfCandDVz_1',
+    'pfCandD_1'
+]
 
 BINARY_FEATURES = [
     'pfCandTauIndMatch_1',
@@ -65,41 +65,41 @@ CATEGORICAL_FEATURES = [
 ]
 
 VECT_FEATURES = [
-         'pfCandPt_1',
-         'pfCandPz_1',
-         'pfCandPtRel_1',
-         'pfCandPzRel_1',
-         'pfCandDr_1',
-         'pfCandDEta_1',
-         'pfCandDPhi_1',
-         'pfCandEta_1',
-         'pfCandDz_1',
-         'pfCandDzErr_1',
-         'pfCandDzSig_1',
-         'pfCandD0_1',
-         'pfCandD0Err_1',
-         'pfCandD0Sig_1',
-         'pfCandPtRelPtRel_1',
-         'pfCandD0D0_1',
-         'pfCandDzDz_1',
-         'pfCandD0Dz_1',
-         'pfCandD0Dphi_1',
-         'pfCandPuppiWeight_1',
-         'pfCandHits_1',
-         'pfCandPixHits_1',
-         'pfCandLostInnerHits_1',
-         'pfCandDVx_1',
-         'pfCandDVy_1',
-         'pfCandDVz_1',
-         'pfCandD_1',
-         'pfCandPdgid_1',
-         'pfCandCharge_1',
-         'pfCandFromPV_1',
-         'pfCandVtxQuality_1',
-         'pfCandTauIndMatch_1',
-         'pfCandHighPurityTrk_1',
-         'pfCandIsBarrel_1',
-    ]
+    'pfCandPt_1',
+    'pfCandPz_1',
+    'pfCandPtRel_1',
+    'pfCandPzRel_1',
+    'pfCandDr_1',
+    'pfCandDEta_1',
+    'pfCandDPhi_1',
+    'pfCandEta_1',
+    'pfCandDz_1',
+    'pfCandDzErr_1',
+    'pfCandDzSig_1',
+    'pfCandD0_1',
+    'pfCandD0Err_1',
+    'pfCandD0Sig_1',
+    'pfCandPtRelPtRel_1',
+    'pfCandD0D0_1',
+    'pfCandDzDz_1',
+    'pfCandD0Dz_1',
+    'pfCandD0Dphi_1',
+    'pfCandPuppiWeight_1',
+    'pfCandHits_1',
+    'pfCandPixHits_1',
+    'pfCandLostInnerHits_1',
+    'pfCandDVx_1',
+    'pfCandDVy_1',
+    'pfCandDVz_1',
+    'pfCandD_1',
+    'pfCandPdgid_1',
+    'pfCandCharge_1',
+    'pfCandFromPV_1',
+    'pfCandVtxQuality_1',
+    'pfCandTauIndMatch_1',
+    'pfCandHighPurityTrk_1',
+    'pfCandIsBarrel_1',
+]
 
 VECT_FEATURES = tuple(VECT_FEATURES)
 FEATURES = tuple(FEATURES)
@@ -108,7 +108,6 @@ FEATURES = tuple(FEATURES)
 def index_choice(root_file, file_name):
     """
     Get one random index from the given file
-
     Only selecting tau from Drell-Yan events and jets from W+jets events, select decay modes 0, 1 and 10 for both tau and jets
     :param root_file: Opened ROOT file
     :param file_name: Name of the ROOT file
@@ -134,7 +133,6 @@ def index_choice(root_file, file_name):
 def get_weights(pt_train, Y):
     """
     Get weights for the sample
-
     Reweighting is applied to flatten tau $p_T$ spectrum
     :param pt_train: $p_T$ list for the sample
     :param Y: Labels for the sample
@@ -166,17 +164,16 @@ def get_weights(pt_train, Y):
 class TauIdDataset(InMemoryDataset):
     """
     Class for data loading from disk with separated features.
-
     Features of PF candidates are represented as a point cloud, while the features describing the event in general are represented as a vector.
     """
-    
-    def __init__(self, root, mode='train', num = 1024):
+
+    def __init__(self, root, mode='train', num=1024):
         """
         :param root: Path to directory where ROOT files with data are stored
         :param mode: 'train' or 'test', in second case loads all the variables from tree with labels for evaluation
         :param num: Number of events to be used in one epoch
         """
-        filenames = glob(root+"DY*.root") +  glob(root+"WJ*.root")
+        filenames = glob(root + "DY*.root") + glob(root + "WJ*.root")
         self.filenames = []
         for i in range(num):
             self.filenames.append(random.choice(filenames))
@@ -196,7 +193,7 @@ class TauIdDataset(InMemoryDataset):
     @property
     def raw_file_names(self):
         return self.filenames
-    
+
     @property
     def processed_file_names(self):
         return ['training.pt', 'test.pt']
@@ -204,7 +201,6 @@ class TauIdDataset(InMemoryDataset):
     def __getitem__(self, index):
         """
         Get event with given index.
-
         :param index: Index of event to select
         :return: Pytorch tensor with features and labels for one event
         """
@@ -214,17 +210,16 @@ class TauIdDataset(InMemoryDataset):
 
     def __len__(self):
         return self.len
-    
+
     def process(self, root_file, file_name):
         """
         Process the data
-
         :param root_file: Opened ROOT file
         :param file_name: Name of the ROOT file
         :return: Pytorch tensor with one event
         """
-        entrystart =  index_choice(root_file['Candidates'], file_name)
-        df = root_file['Candidates'].iterate(entrystart=entrystart, entrystop=entrystart+1)
+        entrystart = index_choice(root_file['Candidates'], file_name)
+        df = root_file['Candidates'].iterate(entrystart=entrystart, entrystop=entrystart + 1)
         df = df.next()
 
         x_list = []
@@ -280,24 +275,24 @@ class TauIdDataset(InMemoryDataset):
 
         arr = df['pfCandCharge_1'][0]
         arrs.append(arr == -1)
-        arrs.append(arr ==  0)
-        arrs.append(arr ==  1)
+        arrs.append(arr == 0)
+        arrs.append(arr == 1)
 
         arr = df['pfCandLostInnerHits_1'][0]
         arrs.append(arr == -1)
-        arrs.append(arr ==  0)
-        arrs.append(arr ==  1)
-        arrs.append(arr ==  2)
+        arrs.append(arr == 0)
+        arrs.append(arr == 1)
+        arrs.append(arr == 2)
 
         arr = df['pfCandPdgid_1'][0]
-        arrs.append(arr ==  1)
-        arrs.append(arr ==  2)
+        arrs.append(arr == 1)
+        arrs.append(arr == 2)
         arrs.append(arr == 11)
-        arrs.append(arr ==  13)
-        arrs.append(arr ==  130)
-        arrs.append(arr ==  211)
-        arrs.append(arr ==  22)
-        arrs.append(arr >  22)
+        arrs.append(arr == 13)
+        arrs.append(arr == 130)
+        arrs.append(arr == 211)
+        arrs.append(arr == 22)
+        arrs.append(arr > 22)
 
         arr = df['pfCandVtxQuality_1'][0]
         arrs.append(arr == 1)
@@ -325,10 +320,10 @@ class TauIdDataset(InMemoryDataset):
         data.x2 = x2
 
         if self.mode == 'train':
-            data.y = torch.tensor(df['lepTauMatch_1'],  dtype=torch.int64)
+            data.y = torch.tensor(df['lepTauMatch_1'], dtype=torch.int64)
             print(data.y)
         elif self.mode == 'test':
-            df_ = pd.DataFrame( [df['lepTauMatch_1'].astype('int32'),
+            df_ = pd.DataFrame([df['lepTauMatch_1'].astype('int32'),
                                 df['lepMVAIso_1'],
                                 df['nLooseTaus'],
                                 df['nPFCands_1'],

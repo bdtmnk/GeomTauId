@@ -3,7 +3,7 @@ import time
 import torch
 from torch_geometric.data import DataLoader
 
-from LoadDataLegacy import TauIdDataset
+from LoadData import TauIdDataset
 
 TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
 TEST_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/test_samples/"

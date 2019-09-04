@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch_geometric.data import DataLoader
 
-from LoadData import TauIdDataset, get_weights, LoadData
+from LoadData import TauIdDataset, get_weights
 from LoadModel import ECN2
 from Logger import Logger
 
@@ -34,25 +34,20 @@ def load_model(path):
 
 if __name__ == "__main__":
     start = time.time()
+
     # Prepare train data
-    # train_dataset = TauIdDataset(TRAIN_SET, num=5000)
-    # train_length = train_dataset.len
-    # train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=True, num_workers=1)
-    load_train_data = LoadData(TRAIN_SET)
-    train_data = load_train_data.load_data(100000)
-    print(train_data)
-    train_loader = DataLoader(train_data, batch_size=1000, shuffle=True, num_workers=1)
+    train_dataset = TauIdDataset(TRAIN_SET, num=5000)
+    train_length = train_dataset.len
+    train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=True, num_workers=1)
 
     train = time.time()
-    # print(train_length)
     print("Train data loaded: {0}".format(train - start))
+
     # Prepare test data
     test_dataset = TauIdDataset(TEST_SET, num=5000)
     test_length = test_dataset.len
     test_loader = DataLoader(test_dataset, batch_size=5000, shuffle=True, num_workers=1)
-    # load_test_data = LoadData(TEST_SET)
-    # test_data = load_test_data.load_data(5000)
-    # test_loader = DataLoader(test_data, batch_size=5000, shuffle=True, num_workers=1)
+
     test = time.time()
     print("Test data loaded: {0}".format(test - train))
 
@@ -66,13 +61,7 @@ if __name__ == "__main__":
         EPOCH = 0
 
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, 100)
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(device)
-
-    i = 1
-
     log = Logger(TRAINING_RES, 'ECN',  RESUME_TRAINING)
-
     torch.set_num_threads(1)
 
     for epoch in range(EPOCH + 1, 101):
@@ -87,20 +76,15 @@ if __name__ == "__main__":
             Y = labels.detach().numpy()
             weight = get_weights(pt_train, Y)
 
-            # print("Input shape", inputs.shape)
-            # print("Labels shape", labels.shape)
-
             # zero the parameter gradients
             optimizer.zero_grad()
-            # print("Num of features:", data.num_features)
 
             # forward + backward + optimize
             outputs = net(data)
-            # print("Output shape", outputs.shape)
             loss = F.binary_cross_entropy(outputs, labels, weight=weight)
             loss.backward()
             optimizer.step()
-            # print(loss)
+            print(loss)
             log.eval_train(loss, labels, outputs)
         scheduler.step()
 
@@ -113,8 +97,8 @@ if __name__ == "__main__":
             'scheduler': scheduler
         }, '{0}ECN_{1}.pt'.format(TRAINING_RES, epoch))
 
+        # Run validation
         if epoch % 10 == 0:
-            train_data = load_train_data.load_data(100000)
             with torch.no_grad():
                 labels_list = []
                 outputs_list = []
