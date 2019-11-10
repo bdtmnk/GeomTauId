@@ -1,0 +1,32 @@
+
+./source create -n py35_tau_id
+source activate  py35_tau_id
+conda install python=3.5
+conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
+conda install cython
+pip install --verbose --no-cache-dir torch-scatter --user
+pip install --verbose --no-cache-dir torch-sparse --user
+pip install --verbose --no-cache-dir torch-cluster --user
+#mkl-random 1.0.1 requires cython, which is not installed.
+#conda install pytorch-cpu torchvision-cpu -c pytorch
+
+pip install torch-geometric --user
+pip install uproot --user
+pip install -U skorch --user
+
+
+ pip3 install torch torchvision --user
+
+ Usage:
+ (py35_tau_id) [dydukhle@max-display003]/beegfs/desy/user/dydukhle/TauId/GeomTauId/GeomTauId/GeomTauId%
+
+
+
+
+ NAF:
+ (geomTauId) [dydukhle@naf-cms-gpu01 ~]$
+ scorch doesn't work!
+
+
+ #TODO check CP!:
+ /nfs/dust/cms/user/dydukhle/STAU/Analysis18/CMSSW_10_2_16/src/DesyTauAnalyses/NTupleMaker/test/plots_mutau
