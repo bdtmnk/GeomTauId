@@ -56,7 +56,7 @@ class Logger:
             self.log.write(
                 "Epoch: {0}; Time: {1} s; Loss: {2}; Acc: {3}; AUC: {4}; Precision: {5}; Recall: {6}\n".format(
                     epoch, epoch_time, self.loss / self.count, self.acc / self.count, self.auc / self.count, self.prec / self.count, self.rec / self.count))
-        except Exception, e:
+        except Exception as e:
             print(str(e))
         self.log.flush()
         self.loss = self.acc = self.prec = self.rec = self.auc = self.count = 0
@@ -77,7 +77,7 @@ class Logger:
         try:
             self.log.write(
                 "Test results({5} epoch):  Loss: {0}; Acc: {1}; AUC: {2}; Precision: {3}; Recall: {4}\n".format(loss / len(Loss), acc, auc, prec, rec, epoch))
-        except Exception, e:
+        except Exception as  e:
             print(str(e))
         self.log.flush()
 

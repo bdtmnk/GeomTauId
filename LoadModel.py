@@ -5,6 +5,12 @@ from torch_geometric.nn import GCNConv, knn_graph, global_mean_pool, GATConv, Po
 from torch_geometric.nn.conv import MessagePassing
 
 
+
+use_cuda = 0#torch.cuda.is_available()
+device = torch.device('cuda' if use_cuda else 'cpu')
+
+
+
 class EdgeConv(MessagePassing):
 
     def __init__(self, nn, aggr='mean', **kwargs):
@@ -83,23 +89,16 @@ class Net(torch.nn.Module):
         The idea is to build a graph with a patch, so our matrix built through local point clouds is actually very
         small and not as difficult to calculate as a large graph.
         '''
-        edge_index = knn_graph(pos, 4, data.batch)
-        # print(x)
-        # print(data.y)
+        edge_index = knn_graph(pos, 6, data.batch)
         x1 = self.conv1(x, edge_index)
-        print("After GCN size:", x1.size())
         x1 = self.mlp1(x1)
         x1 = F.relu(x1)
         x2 = self.conv2(x1, edge_index)
-        print("After GCN size:", x2.size())
+        
         x2 = self.mlp2(x2)
-        print("After GCN size:", x2.size())
         x2 = F.relu(x2)
-        print(x2.shape)
         x4 = torch.cat([x1, x2], dim=1)
-        print(x4.shape)
         out = self.line1(x4)
-        print("Out: ", out.shape)
         out = global_mean_pool(out, data.batch, size=data.num_graphs)
         out = self.mlp(out)
         # return F.log_softmax(out, dim=1)
@@ -109,31 +108,31 @@ class Net(torch.nn.Module):
 class ECN(torch.nn.Module):
     """Network with one EdgeConv layer"""
 
-    def __init__(self):
+    def __init__(self, KNN_Number):
         super(ECN, self).__init__()
         self.conv = EdgeConv(MLP([118, 128]), aggr='mean')
         self.classifier = MLP([128, 256, 1])
+        self.KNN_Number = KNN_Number
 
     def forward(self, data):
         x = data.x
         pos = data.pos
+        print(pos.shape)
+        print(x.shape)
         batch = data.batch
-        edge_index = knn_graph(pos, 3, batch, loop=False)
-        print('index')
+        edge_index = knn_graph(pos, KNN_Number, batch, loop=False)
         x1 = self.conv(x, edge_index)
-        print('conv')
         x2 = global_mean_pool(x1, batch, size=data.num_graphs)
-        print('pool')
         out = self.classifier(x2)
-        print('mlp')
         return torch.sigmoid(out)[:, 0]
+
 
 
 class ECN2(torch.nn.Module):
     """Network with three EdgeConv layers"""
     def __init__(self):
         super(ECN2, self).__init__()
-        self.conv1 = EdgeConv(MLP([118, 128]), aggr='mean')
+        self.conv1 = EdgeConv(MLP([106, 128]), aggr='mean')
         self.conv2 = EdgeConv(MLP([256, 256]), aggr='mean')
         self.conv3 = EdgeConv(MLP([512, 512]), aggr='mean')
         self.classifier = MLP([512, 512, 1])
@@ -142,19 +141,19 @@ class ECN2(torch.nn.Module):
         x = data.x
         pos = data.pos
         batch = data.batch
-        edge_index = knn_graph(pos, 4, batch, loop=False)
+        edge_index = knn_graph(pos, 6, batch, loop=False)
         x1 = self.conv1(x, edge_index)
-        # print('conv1')
-        edge_index = knn_graph(x1, 4, batch, loop=False)
+        print('conv1')
+        edge_index = knn_graph(x1, 6, batch, loop=False)
         x1 = self.conv2(x1, edge_index)
-        # print('conv2')
-        edge_index = knn_graph(x1, 4, batch, loop=False)
+        print('conv2')
+        edge_index = knn_graph(x1, 6, batch, loop=False)
         x1 = self.conv3(x1, edge_index)
-        # print('conv3')
+        print('conv3')
         x2 = global_mean_pool(x1, batch, size=data.num_graphs)
-        # print('pool')
+        print('pool')
         out = self.classifier(x2)
-        # print('mlp')
+        print('mlp')
         return torch.sigmoid(out)[:, 0]
 
 
@@ -164,57 +163,62 @@ class ECN3(torch.nn.Module):
 
     Features describing the event in general are fed directly into the MLP classifier.
     """
-    def __init__(self):
+    def __init__(self, KNN_Number):
         super(ECN3, self).__init__()
-        self.conv1 = EdgeConv(MLP([102, 64]), aggr='mean')
-        self.conv2 = EdgeConv(MLP([128, 128]), aggr='mean')
-        self.conv3 = EdgeConv(MLP([256, 256]), aggr='mean')
+        self.conv1 = EdgeConv(MLP([106, 128]), aggr='mean').to(device)
+        self.conv2 = EdgeConv(MLP([256, 256]), aggr='mean').to(device)
+        self.conv3 = EdgeConv(MLP([512, 512]), aggr='mean').to(device)
         # self.mlp = MLP([8, 8, 8])
-        self.classifier = MLP([264, 512, 1])
+        self.classifier = MLP([512, 512, 1]).to(device)
+        self.KNN_Number = KNN_Number
 
     def forward(self, data):
-        x = data.x
-        pos = data.pos
-        x2 = data.x2
-        batch = data.batch
-        edge_index = knn_graph(pos, 3, batch, loop=False)
+        KNN_Number = self.KNN_Number
+        #data.cuda(device)
+        x = data.x.to(device)
+        pos = data.pos.to(device)
+        
+        print("X Shape: ", x.shape)
+        print("Pos Shape: ", pos.shape)
+        edge_index = knn_graph(pos, KNN_Number, data.batch, loop=False).to(device)
         x1 = self.conv1(x, edge_index)
-        print('conv1')
-        edge_index = knn_graph(x1, 3, batch, loop=False)
+        print("X1 Shape: ", x1.shape)
+
+        #edge_index = knn_graph(x1, KNN_Number, batch, loop=False)
         x1 = self.conv2(x1, edge_index)
-        print('conv2')
-        edge_index = knn_graph(x1, 3, batch, loop=False)
+        print("X2 Shape: ", x1.shape)
+
+        #edge_index = knn_graph(x1, KNN_Number, batch, loop=False)
         x1 = self.conv3(x1, edge_index)
-        print('conv3')
+        print("X3 Shape: ", x1.shape)
+
         x1 = global_mean_pool(x1, batch, size=data.num_graphs)
-        # x2 = self.mlp(x2)
-        x2 = torch.cat((x1, x2), dim=1)
-        print('pool')
-        out = self.classifier(x2)
-        print('mlp')
+        out = self.classifier(x1)
         return torch.sigmoid(out)[:, 0]
+
+
 
 
 class ECN4(torch.nn.Module):
     """Network with three EdgeConv layers with residual connections"""
     def __init__(self):
         super(ECN4, self).__init__()
-        self.conv1 = EdgeConv(S(MLP([118, 128]), ResMLP(128, 2)), aggr='mean')
-        self.conv2 = EdgeConv(ResMLP(256, 3), aggr='mean')
-        self.conv3 = EdgeConv(ResMLP(512, 3), aggr='mean')
+        self.conv1 = EdgeConv(S(MLP([118, 128]), ResMLP(128, 2)), aggr='mean').to(device)
+        self.conv2 = EdgeConv(ResMLP(256, 3), aggr='mean').to(device)
+        self.conv3 = EdgeConv(ResMLP(512, 3), aggr='mean').to(device)
         self.classifier = MLP([512, 512, 1])
 
     def forward(self, data):
         x = data.x
         pos = data.pos
         batch = data.batch
-        edge_index = knn_graph(pos, 3, batch, loop=False)
+        edge_index = knn_graph(pos, 6, batch, loop=False)
         x1 = self.conv1(x, edge_index)
         print('conv1')
-        edge_index = knn_graph(x1, 3, batch, loop=False)
+        edge_index = knn_graph(x1, 6, batch, loop=False)
         x1 = self.conv2(x1, edge_index)
         print('conv2')
-        edge_index = knn_graph(x1, 3, batch, loop=False)
+        edge_index = knn_graph(x1, 6, batch, loop=False)
         x1 = self.conv3(x1, edge_index)
         print('conv3')
         x2 = global_mean_pool(x1, batch, size=data.num_graphs)
@@ -239,22 +243,22 @@ class ECN5(torch.nn.Module):
         x = data.x
         pos = data.pos
         batch = data.batch
-        edge_index = knn_graph(pos, 4, batch, loop=False)
+        edge_index = knn_graph(pos, 6, batch, loop=False)
         x = self.conv1(x, edge_index)
         print('conv1')
-        edge_index = knn_graph(x, 4, batch, loop=False)
+        edge_index = knn_graph(x, 6, batch, loop=False)
         x1 = self.conv2(x, edge_index)
         x = torch.cat((x, x1), dim=1)
         print('conv2')
-        edge_index = knn_graph(x1, 4, batch, loop=False)
+        edge_index = knn_graph(x1, 6, batch, loop=False)
         x1 = self.conv3(x, edge_index)
         x = torch.cat((x, x1), dim=1)
         print('conv3')
-        edge_index = knn_graph(x1, 4, batch, loop=False)
+        edge_index = knn_graph(x1, 6, batch, loop=False)
         x1 = self.conv4(x, edge_index)
         x = torch.cat((x, x1), dim=1)
         print('conv4')
-        edge_index = knn_graph(x1, 4, batch, loop=False)
+        edge_index = knn_graph(x1, 6, batch, loop=False)
         x1 = self.conv5(x, edge_index)
         x = torch.cat((x, x1), dim=1)
         print('conv5')
@@ -297,7 +301,7 @@ class PCN(torch.nn.Module):
         x = data.x
         pos = data.pos
         batch = data.batch
-        edge_index = knn_graph(pos, 3, batch, loop=False)
+        edge_index = knn_graph(pos, 6, batch, loop=False)
         print('index')
         x1 = self.conv(x, pos,  edge_index)
         print('conv')

@@ -1,117 +1,106 @@
 import random
 from glob import glob
-
 import numpy as np
 import pandas as pd
 import torch
 import uproot
-from torch_geometric.data import Data, InMemoryDataset
+from pandas.api.types import CategoricalDtype
+from torch_geometric.data import Dataset, Data
 
-TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/histograms/"
-
-COORDINATES = [
+TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/histograms"
+TRAINING_RES = "/beegfs/desy/user/dydukhle/TauId/GeomTauId/GeomTauId/GeomTauId/histogram/"
+COORDINATES = np.char.array([
     'pfCandDEta_1',
     'pfCandDPhi_1',
-    'pfCandEta_1'
-]
+    'pfCandPt_1'
+])
 
-FEATURES = [
-    'nLooseTaus',
-    'nPFCands_1',
-    'lepRecoPt_1',
-    'lepRecoEta_1',
-    'pfCandPt_1',
-    'pfCandPz_1',
-    'pfCandPtRel_1',
-    'pfCandPzRel_1',
-    'pfCandDr_1',
-    'pfCandDEta_1',
-    'pfCandDPhi_1',
-    'pfCandEta_1',
-    'pfCandDz_1',
-    'pfCandDzErr_1',
-    'pfCandDzSig_1',
-    'pfCandD0_1',
-    'pfCandD0Err_1',
-    'pfCandD0Sig_1',
-    'pfCandPtRelPtRel_1',
-    'pfCandD0D0_1',
-    'pfCandDzDz_1',
-    'pfCandD0Dz_1',
-    'pfCandD0Dphi_1',
-    'pfCandPuppiWeight_1',
-    'pfCandHits_1',
-    'pfCandPixHits_1',
-    'pfCandDVx_1',
-    'pfCandDVy_1',
-    'pfCandDVz_1',
-    'pfCandD_1'
-]
+FEATURES = np.char.array([
+         'nLooseTaus',
+         'nPFCands_1',
+         'lepRecoPt_1',
+         'lepRecoEta_1',
+         'pfCandPt_1',
+         'pfCandPz_1',
+         'pfCandPtRel_1',
+         'pfCandPzRel_1',
+         'pfCandDr_1',
+         'pfCandDEta_1',
+         'pfCandDPhi_1',
+         'pfCandEta_1',
+         'pfCandDz_1',
+         'pfCandDzErr_1',
+         'pfCandDzSig_1',
+         'pfCandD0_1',
+         'pfCandD0Err_1',
+         'pfCandD0Sig_1',
+         'pfCandPuppiWeight_1',
+         'pfCandHits_1',
+         'pfCandPixHits_1',
+         'pfCandDVx_1',
+         'pfCandDVy_1',
+         'pfCandDVz_1',
+         'pfCandD_1'
+    ])
 
-BINARY_FEATURES = [
+BINARY_FEATURES = np.char.array([
     'pfCandTauIndMatch_1',
     'pfCandHighPurityTrk_1',
     'pfCandIsBarrel_1',
     'lepHasSV_1'
-]
+])
 
-CATEGORICAL_FEATURES = [
+CATEGORICAL_FEATURES = np.char.array([
     'decayMode_1',
     'pfCandCharge_1',
     'pfCandLostInnerHits_1',
     'pfCandPdgid_1',
     'pfCandVtxQuality_1',
     'pfCandFromPV_1'
-]
+])
 
-VECT_FEATURES = [
-    'pfCandPt_1',
-    'pfCandPz_1',
-    'pfCandPtRel_1',
-    'pfCandPzRel_1',
-    'pfCandDr_1',
-    'pfCandDEta_1',
-    'pfCandDPhi_1',
-    'pfCandEta_1',
-    'pfCandDz_1',
-    'pfCandDzErr_1',
-    'pfCandDzSig_1',
-    'pfCandD0_1',
-    'pfCandD0Err_1',
-    'pfCandD0Sig_1',
-    'pfCandPtRelPtRel_1',
-    'pfCandD0D0_1',
-    'pfCandDzDz_1',
-    'pfCandD0Dz_1',
-    'pfCandD0Dphi_1',
-    'pfCandPuppiWeight_1',
-    'pfCandHits_1',
-    'pfCandPixHits_1',
-    'pfCandLostInnerHits_1',
-    'pfCandDVx_1',
-    'pfCandDVy_1',
-    'pfCandDVz_1',
-    'pfCandD_1',
-    'pfCandPdgid_1',
-    'pfCandCharge_1',
-    'pfCandFromPV_1',
-    'pfCandVtxQuality_1',
-    'pfCandTauIndMatch_1',
-    'pfCandHighPurityTrk_1',
-    'pfCandIsBarrel_1',
-]
+VECT_FEATURES = np.char.array([
+         'pfCandPz_1',
+         'pfCandPtRel_1',
+         'pfCandPzRel_1',
+         'pfCandDr_1',
+         'pfCandDEta_1',
+         'pfCandDPhi_1',
+         'pfCandEta_1',
+         'pfCandDz_1',
+         'pfCandDzErr_1',
+         'pfCandDzSig_1',
+         'pfCandD0_1',
+         'pfCandD0Err_1',
+         'pfCandD0Sig_1',
+         'pfCandPuppiWeight_1',
+         'pfCandHits_1',
+         'pfCandPixHits_1',
+         'pfCandLostInnerHits_1',
+         'pfCandDVx_1',
+         'pfCandDVy_1',
+         'pfCandDVz_1',
+         'pfCandD_1',
+         'pfCandPdgid_1',
+         'pfCandCharge_1',
+         'pfCandFromPV_1',
+         'pfCandVtxQuality_1',
+         'pfCandTauIndMatch_1',
+         'pfCandHighPurityTrk_1',
+         'pfCandIsBarrel_1',
+    ])
 
-VECT_FEATURES = tuple(VECT_FEATURES)
-FEATURES = tuple(FEATURES)
+TARGET = np.char.array(['lepTauMatch_1', ])
 
 
-def index_choice(root_file, file_name):
+
+def get_indices(root_file, file_name, mode='train'):
     """
-    Get one random index from the given file
+    Get the indices of all the appropriate events from the given file
     Only selecting tau from Drell-Yan events and jets from W+jets events, select decay modes 0, 1 and 10 for both tau and jets
     :param root_file: Opened ROOT file
     :param file_name: Name of the ROOT file
-    :return: One chosen index
+    :return: List of the indices
     """
 
     df = pd.DataFrame()
@@ -121,12 +110,16 @@ def index_choice(root_file, file_name):
     df['tau_match'] = root_file["lepTauMatch_1"].array()
     df['jet_match'] = 1 - df['el_match'] - df['tau_match'] - df['mu_match']
     index = 0
-    if "WJ" in file_name:
-        index = np.where((df['jet_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
-        index = random.choice(index)
-    elif "DY" in file_name:
-        index = np.where((df['tau_match'] == 1) & ((df['decay_mode'] <= 1) | (df['decay_mode'] == 10)))[0]
-        index = random.choice(index)
+
+    if "DY" in file_name:
+        index = np.where((df['tau_match'] == 1))[0]
+        
+    else:
+        index = np.where((df['jet_match'] == 1))[0]
+
+   
+    if mode=="test":
+        index = np.where((df['decay_mode'] <= 1) | (df['decay_mode'] == 10))[0]
     return index
 
 
@@ -161,30 +154,62 @@ def get_weights(pt_train, Y):
     return torch.tensor(W_train, dtype=torch.float32)
 
 
-class TauIdDataset(InMemoryDataset):
-    """Old class for data loading from disk (work slow)."""
-
-    def __init__(self, root, mode='train', num=1024):
+class TauIdDataset(Dataset):
+    """Class for data loading from disk."""
+    
+    def __init__(self, root, mode='train', num = 1024, nfiles = 1):
         """
         :param root: Path to directory where ROOT files with data are stored
         :param mode: 'train' or 'test', in second case loads all the variables from tree with labels for evaluation
         :param num: Number of events to be used in one epoch
+        :param nfiles: Number of files to load (the same number is used for signal and background files)
         """
-        filenames = glob(root + "DY*.root") + glob(root + "WJ*.root")
+        self.sig_files = glob(root+"*DY*.root")
+        self.bkg_files = [file_name for file_name in glob(root+"*.root") if "DY" not in file_name]
         self.filenames = []
-        for i in range(num):
-            self.filenames.append(random.choice(filenames))
+        for i in range(nfiles):
+            filename = random.choice(self.sig_files)
+            self.sig_files.remove(filename)
+            self.filenames.append(filename)
+        for i in range(nfiles):
+            filename = random.choice(self.bkg_files)
+            self.bkg_files.remove(filename)
+            self.filenames.append(filename)
         self.root = root
-        self.len = len(self.filenames)
+        self.len = num
         self.mode = mode
+        if self.mode == 'test':
+            self.test_data = []
         self.max = pd.read_csv("{0}max.csv".format(TRAINING_RES))['val'].astype('float32')
         self.features = pd.read_csv("{0}max.csv".format(TRAINING_RES))['feature']
         self.min = pd.read_csv("{0}min.csv".format(TRAINING_RES))['val'].astype('float32')
+        self.nfiles = nfiles*2
+        self.cat_types = pd.Series([ CategoricalDtype(categories=[0, 1, 10], ordered = True),
+                                     CategoricalDtype(categories=[-1, 0, 1], ordered=True),
+                                     CategoricalDtype(categories=[-1, 0, 1, 2], ordered=True),
+                                     CategoricalDtype(categories=[1, 2, 11, 13, 130, 211, 22], ordered=True),
+                                     CategoricalDtype(categories=[1, 5, 6, 7], ordered=True),
+                                     CategoricalDtype(categories=[1, 2, 3], ordered=True)], index=CATEGORICAL_FEATURES)
+        # self.files = []
+        self.indices = []
+        self.data = []
+        for file_index in range(self.nfiles):
+	   #Iterate over each file and 
+            file = uproot.open(self.filenames[file_index])
+            self.indices.append(get_indices(file['Candidates'], self.filenames[file_index]))
+            if self.mode == 'train':
+                self.data.append(file['Candidates'].pandas.df(
+                    np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))).loc[self.indices[file_index]].astype('float32'))
+                self.data[file_index] = self.pre_process(self.data[file_index])
+            elif self.mode == 'test':
+                self.data.append(file['Candidates'].pandas.df(np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET, ['lepMVAIso_1',]))).loc[self.indices[file_index]].astype('float32'))
+                self.test_data.append(self.data[file_index])
+                self.data[file_index] = self.pre_process(self.data[file_index])
 
     @property
     def raw_file_names(self):
         return self.filenames
-
+    
     @property
     def processed_file_names(self):
         return ['training.pt', 'test.pt']
@@ -195,162 +220,224 @@ class TauIdDataset(InMemoryDataset):
         :param index: Index of event to select
         :return: Pytorch tensor with features and labels for one event
         """
-        root_file = uproot.open(self.filenames[index])
-        data = self.process(root_file, self.filenames[index])
-        return data
+        i = random.randint(0, self.nfiles - 1)
+        if len(self.indices[i]) > 0:
+            j = random.choice(self.indices[i])
+            self.indices[i] = np.delete(self.indices[i], np.where(self.indices[i] == j)[0])
+            if self.mode == 'train':
+                return self.get_tensor(self.data[i].loc[j])
+            elif self.mode == 'test':
+                return self.get_tensor(self.data[i].loc[j], self.test_data[i].loc[j])
+        else:
+            self.reload_file(i)
+            i = self.nfiles - 1
+            j = random.choice(self.indices[i])
+            # print(np.where(self.indices[i] == j))
+            self.indices[i] = np.delete(self.indices[i], np.where(self.indices[i] == j)[0])
+            if self.mode == 'train':
+                return self.get_tensor(self.data[i].loc[j])
+            elif self.mode == 'test':
+                return self.get_tensor(self.data[i].loc[j], self.test_data[i].loc[j])
 
     def __len__(self):
         return self.len
 
-    def process(self, root_file, file_name):
+    def reload_file(self, index):
         """
-        Process the data
-        :param root_file: Opened ROOT file
-        :param file_name: Name of the ROOT file
-        :return: Pytorch tensor with one event
+        Load new file instead of file with given index.
+        Currently function isn't working properly
+        :param index: Index of file to delete.
+        :return: None
         """
-        entrystart = index_choice(root_file['Candidates'], file_name)
-        df = root_file['Candidates'].iterate(entrystart=entrystart, entrystop=entrystart + 1)
-        df = df.next()
+        filename = self.filenames[index]
+        self.indices.remove(self.indices[index])
+        self.data.remove(self.data[index])
+        self.filenames.remove(self.filenames[index])
+        if "DY" in filename:
+            filename = random.choice(self.sig_files)
+            self.sig_files.remove(filename)
+            self.filenames.append(filename)
+        elif "WJ" in filename:
+            filename = random.choice(self.bkg_files)
+            self.bkg_files.remove(filename)
+            self.filenames.append(filename)
+        file = uproot.open(filename)
+        i = self.nfiles - 1
+        self.indices.append(get_indices(file['Candidates'], filename))
+        if self.mode == 'train':
+            self.data.append(file['Candidates'].pandas.df(
+                np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))).loc[self.indices[i]].astype(
+                'float32'))
+            self.data[i] = self.pre_process(self.data[i])
+        elif self.mode == 'test':
+            self.data.append(file['Candidates'].pandas.df(
+                np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))).loc[self.indices[i]].astype(
+                'float32'))
+            self.test_data.append(self.data[i])
+            self.data[i] = self.pre_process(self.data[i])
 
-        _df = pd.DataFrame()
+    def norm_min_max(self, value):
+        """
+        Normalise given feature.
+        :param value: Pandas series with feature to normalise
+        :return: Pandas series with normalised feature
+        """
+        feature = value.name
+        min = self.min.get(self.features[self.features == feature].index[0])
+        max = self.max.get(self.features[self.features == feature].index[0])
+        return (value - min) / (max - min)
 
-        x_list = []
-        x_pos = []
-        nCand = len(df['pfCandCharge_1'][0])
+    def set_category(self, value):
+        """
+        Apply one-hot encoding to categorical feature.
+        :param value: Pandas series with categorical feature
+        :return: Dataframe with encoded feature
+        """
+        return  value.astype(self.cat_types[value.name])
 
-        for feature_index in range(len(FEATURES)):
-            feature = FEATURES[feature_index]
-            min = self.min.get(self.features[self.features == feature].index[0])
-            max = self.max.get(self.features[self.features == feature].index[0])
+    def get_tensor(self, df, df_test=None):
+        """
+        Transform dataframe to pytorch tensor with features and labels.
+        :param df: Dataframe to transform
+        :param df_test: Dataframe with not pre-transformed features (only needed if mode='test')
+        :return: Pytorch tensor
+        """
+        label = df['lepTauMatch_1'].iloc[:1]
+        df = df.drop(columns=TARGET)
+        pos = torch.tensor(df[COORDINATES].values)
+        x = torch.tensor(df.values)
 
-            if feature in VECT_FEATURES:
-                arr = (df[feature][0] - min) / (max - min)
-                x = torch.tensor(arr).float()
-            else:
-                arr = np.pad(df[feature], [(0, nCand - 1)], mode='mean')
-                arr = (arr - min) / (max - min)
-                x = torch.tensor(arr).float()
-            x_list.append(x)
-
-            if feature in COORDINATES:
-                x_pos.append(x)
-
-        pos = torch.stack(x_pos)
-        pos = torch.transpose(pos, 0, 1)
-        pos[torch.isnan(pos)] = 0
         data = Data()
         data.pos = pos
+        data.x = x
+        
+        if self.mode == 'train':
+            data.y = torch.tensor(label.values,  dtype=torch.int64)
+        elif self.mode == 'test':
+            data.y = torch.tensor(label.values,  dtype=torch.int64)
+        return data
 
-        for feature_index in range(len(BINARY_FEATURES)):
-            feature = BINARY_FEATURES[feature_index]
+    def pre_process(self, df):
+        """
+        Pre-process the input data.
+        :param df: Dataframe with not pre-transformed features
+        :return: Dataframe with pre-transformed features
+        """
+        if self.mode == 'test':
+            df = df[np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))]
+        df[FEATURES] = df[FEATURES].apply(self.norm_min_max, axis=0)
+        df = pd.concat([df[np.concatenate((FEATURES, BINARY_FEATURES, TARGET))],
+                        pd.get_dummies(df[CATEGORICAL_FEATURES].apply(self.set_category, axis=0))], axis=1)
+        df = df.fillna(0)
+        return df
 
-            if feature in VECT_FEATURES:
-                arr = df[feature][0]
-                x = torch.tensor(arr).float()
-            else:
-                arr = np.pad(df[feature], [(0, nCand - 1)], mode='mean')
-                x = torch.tensor(arr).float()
-            x_list.append(x)
 
-        arrs = []
+class LoadData:
+    """Class for data loading (doesn't work currently)"""
 
-        arr = df['decayMode_1']
-        arrs.append(arr == 0)
-        arrs.append(arr == 1)
-        arrs.append(arr == 10)
+    def __init__(self, root):
+        """
+        :param root: Path to directory where ROOT files with data are stored
+        """
+        self.sig_files = glob(root+"DY*.root")
+        self.bkg_files = glob(root+"WJ*.root")
+        self.cat_types = pd.Series([CategoricalDtype(categories=[0, 1, 10], ordered=True),
+                                    CategoricalDtype(categories=[-1, 0, 1], ordered=True),
+                                    CategoricalDtype(categories=[-1, 0, 1, 2], ordered=True),
+                                    CategoricalDtype(categories=[1, 2, 11, 13, 130, 211, 22], ordered=True),
+                                    CategoricalDtype(categories=[1, 5, 6, 7], ordered=True),
+                                    CategoricalDtype(categories=[1, 2, 3], ordered=True)], index=CATEGORICAL_FEATURES)
+        self.max = pd.read_csv("{0}max.csv".format(TRAINING_RES))['val'].astype('float32')
+        self.features = pd.read_csv("{0}max.csv".format(TRAINING_RES))['feature']
+        self.min = pd.read_csv("{0}min.csv".format(TRAINING_RES))['val'].astype('float32')
+        
+    def load_data(self, num):
+        """
+        Load specified number of events.
+        :param num: Number of events to load
+        :return: List of pytorch tensors
+        """
+        data = []
+        while len(data) < (num / 2):
+            print(len(data))
+            filename = random.choice(self.sig_files)
+            self.sig_files.remove(filename)
+            file = uproot.open(filename)
+            indices = get_indices(file['Candidates'], filename)
+            df = file['Candidates'].pandas.df(
+                np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))).loc[indices].astype(
+                'float32')
+            df = self.pre_process(df)
+            # data = df.apply(self.get_tensor)
+            for i in np.unique(df.index.get_level_values('entry').to_numpy()):
+                data.append(self.get_tensor(df.loc[i]))
+                if len(data) >= (num / 2):
+                    break
+        data = data[:num/2]
 
-        for arr in arrs:
-            arr = np.pad(arr, [(0, nCand -  1)], mode='mean')
-            x = torch.tensor(arr).float()
-            x_list.append(x)
+        while len(data) < num:
+            filename = random.choice(self.bkg_files)
+            self.bkg_files.remove(filename)
+            file = uproot.open(filename)
+            indices = get_indices(file['Candidates'], filename)
+            df = file['Candidates'].pandas.df(
+                np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))).loc[indices].astype(
+                'float32')
+            df = self.pre_process(df)
+            # data = df.apply(self.get_tensor)
+            for i in np.unique(df.index.get_level_values('entry').to_numpy()):
+                data.append(self.get_tensor(df.loc[i]))
+                if len(data) >= num:
+                    break
+        data = data[:num]
+        print(data)
+        return random.shuffle(data)
 
-        arrs = []
+    def pre_process(self, df):
+        """
+        Pre-process the input data.
+        :param df: Dataframe with not pre-transformed features
+        :return: Dataframe with pre-transformed features
+        """
+        df[FEATURES] = df[FEATURES].apply(self.norm_min_max, axis=0)
+        df = pd.concat([df[np.concatenate((FEATURES, BINARY_FEATURES, TARGET))],
+                        pd.get_dummies(df[CATEGORICAL_FEATURES].apply(self.set_category, axis=0))], axis=1)
+        df = df.fillna(0)
+        return df
+    
+    def norm_min_max(self, value):
+        """
+        Normalise given feature.
+        :param value: Pandas series with feature to normalise
+        :return: Pandas series with normalised feature
+        """
+        feature = value.name
+        min = self.min.get(self.features[self.features == feature].index[0])
+        max = self.max.get(self.features[self.features == feature].index[0])
+        return (value - min) / (max - min)
 
-        arr = df['pfCandCharge_1'][0]
-        arrs.append(arr == -1)
-        arrs.append(arr == 0)
-        arrs.append(arr == 1)
+    def set_category(self, value):
+        """
+        Apply one-hot encoding to categorical feature.
+        :param value: Pandas series with categorical feature
+        :return: Dataframe with encoded feature
+        """
+        return  value.astype(self.cat_types[value.name])
 
-        arr = df['pfCandLostInnerHits_1'][0]
-        arrs.append(arr == -1)
-        arrs.append(arr == 0)
-        arrs.append(arr == 1)
-        arrs.append(arr == 2)
-
-        arr = df['pfCandPdgid_1'][0]
-        arrs.append(arr == 1)
-        arrs.append(arr == 2)
-        arrs.append(arr == 11)
-        arrs.append(arr == 13)
-        arrs.append(arr == 130)
-        arrs.append(arr == 211)
-        arrs.append(arr == 22)
-        arrs.append(arr > 22)
-
-        arr = df['pfCandVtxQuality_1'][0]
-        arrs.append(arr == 1)
-        arrs.append(arr == 5)
-        arrs.append(arr == 6)
-        arrs.append(arr == 7)
-
-        arr = df['pfCandFromPV_1'][0]
-        arrs.append(arr == 1)
-        arrs.append(arr == 2)
-        arrs.append(arr == 3)
-
-        for arr in arrs:
-            x_list.append(torch.tensor(arr).float())
-
-        x = torch.stack(x_list)
-        x = torch.transpose(x, 0, 1)
-        x[torch.isnan(x)] = 0
+    def get_tensor(self, df):
+        """
+        Transform dataframe to pytorch tensor with features and labels.
+        :param df: Dataframe to transform
+        :return: Pytorch tensor
+        """
+        label = df['lepTauMatch_1'].iloc[:1]
+        df = df.drop(columns=TARGET)
+        pos = torch.tensor(df[COORDINATES].values)
+        x = torch.tensor(df.values)
+        data = Data()
+        data.pos = pos
         data.x = x
 
-        if self.mode == 'train':
-            data.y = torch.tensor(df['lepTauMatch_1'], dtype=torch.int64)
-        elif self.mode == 'test':
-            df_ = pd.DataFrame([df['lepTauMatch_1'].astype('int32'),
-                                df['lepMVAIso_1'],
-                                df['nLooseTaus'],
-                                df['nPFCands_1'],
-                                df['decayMode_1'],
-                                df['lepRecoPt_1'],
-                                df['lepRecoEta_1'],
-                                df['pfCandPt_1'][0],
-                                df['pfCandPz_1'][0],
-                                df['pfCandPtRel_1'][0],
-                                df['pfCandPzRel_1'][0],
-                                df['pfCandDr_1'][0],
-                                df['pfCandDEta_1'][0],
-                                df['pfCandDPhi_1'][0],
-                                df['pfCandEta_1'][0],
-                                df['pfCandDz_1'][0],
-                                df['pfCandDzErr_1'][0],
-                                df['pfCandDzSig_1'][0],
-                                df['pfCandD0_1'][0],
-                                df['pfCandD0Err_1'][0],
-                                df['pfCandD0Sig_1'][0],
-                                df['pfCandPtRelPtRel_1'][0],
-                                df['pfCandD0D0_1'][0],
-                                df['pfCandDzDz_1'][0],
-                                df['pfCandD0Dz_1'][0],
-                                df['pfCandD0Dphi_1'][0],
-                                df['pfCandPuppiWeight_1'][0],
-                                df['pfCandHits_1'][0],
-                                df['pfCandPixHits_1'][0],
-                                df['pfCandLostInnerHits_1'][0],
-                                df['pfCandDVx_1'][0],
-                                df['pfCandDVy_1'][0],
-                                df['pfCandDVz_1'][0],
-                                df['pfCandD_1'][0],
-                                df['pfCandPdgid_1'][0],
-                                df['pfCandCharge_1'][0],
-                                df['pfCandFromPV_1'][0],
-                                df['pfCandVtxQuality_1'][0],
-                                df['pfCandTauIndMatch_1'][0].astype('int32'),
-                                df['pfCandHighPurityTrk_1'][0].astype('int32'),
-                                df['pfCandIsBarrel_1'][0].astype('int32'),
-                                df['lepHasSV_1'].astype('int32')])
-            data.y = torch.tensor([df_[0].values])
+        data.y = torch.tensor(label.values, dtype=torch.int64)
         return data
+

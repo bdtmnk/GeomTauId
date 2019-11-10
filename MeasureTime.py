@@ -5,12 +5,18 @@ from torch_geometric.data import DataLoader
 
 from LoadData import TauIdDataset
 
-TRAIN_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/train_samples/"
-TEST_SET = "/nfs/dust/cms/user/dydukhle/TauIdSamples/TauId/2016/test_samples/"
-TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/ECN/"
-epoch = 50
-batch_size = 2048
-num = 2048
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+BASE_PATH = "/beegfs/desy/user/dydukhle/TauId/GeomTauId/GeomTauId/"
+TRAIN_SET = "{0}/TauIdSamples/train_samples/".format(BASE_PATH)
+TEST_SET = "{0}/TauIdSamples/train_samples/".format(BASE_PATH)
+TRAINING_RES = "{0}/GeomTauId/Results/GCN_DM_KNN_ECN3/".format(BASE_PATH)
+RESUME_TRAINING = False
+EPOCH = 33
+nFiles = 1
+nEvents = 1
+batch_size = 1
+num = 10
 
 
 def load_model(path):
@@ -32,13 +38,15 @@ def load_model(path):
 
 
 if __name__ == '__main__':
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     start_time = time.time()
     test_dataset = TauIdDataset(TEST_SET, num=num)
     time_dataset = time.time()
     test_length = test_dataset.len
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=1)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=16)
     time_loader = time.time()
-
     net, _, epoch, _ = load_model('{0}ECN_{1}.pt'.format(TRAINING_RES, epoch))
     print(net)
 
