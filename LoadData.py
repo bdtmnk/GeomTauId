@@ -1,20 +1,19 @@
 import random
-from glob import glob
-
-import numpy as np
-import pandas as pd
 import torch
 import uproot
+import numpy as np
+import pandas as pd
+from glob import glob
 from pandas.api.types import CategoricalDtype
 from torch_geometric.data import Dataset, Data
 
 TRAINING_RES = "/nfs/dust/cms/user/bukinkir/TauId/histograms/"
 
 COORDINATES = np.char.array([
-    'pfCandDEta_1',
-    'pfCandDPhi_1',
-    'pfCandEta_1'
-])
+                'pfCandDEta_1',
+                'pfCandDPhi_1',
+                'pfCandEta_1'
+            ])
 
 FEATURES = np.char.array([
          'nLooseTaus',
@@ -151,7 +150,9 @@ def get_weights(pt_train, Y):
 
 
 class TauIdDataset(Dataset):
-    """Class for data loading from disk."""
+    """
+    Class for data loading from disk.
+    """
     
     def __init__(self, root, mode='train', num = 1024, nfiles = 1, processes="all", scale=False):
         """
@@ -190,6 +191,8 @@ class TauIdDataset(Dataset):
             self.max = pd.read_csv("{0}max.csv".format(TRAINING_RES))['val'].astype('float32')
             self.features = pd.read_csv("{0}max.csv".format(TRAINING_RES))['feature']
             self.min = pd.read_csv("{0}min.csv".format(TRAINING_RES))['val'].astype('float32')
+        
+
         self.nfiles = nfiles*2
         
         self.cat_types = pd.Series([ CategoricalDtype(categories=[0, 1, 10], ordered = True),
@@ -198,17 +201,11 @@ class TauIdDataset(Dataset):
                                      CategoricalDtype(categories=[1, 2, 11, 13, 130, 211, 22], ordered=True),
                                      CategoricalDtype(categories=[1, 5, 6, 7], ordered=True),
                                      CategoricalDtype(categories=[1, 2, 3], ordered=True)], index=CATEGORICAL_FEATURES)
-        # self.files = []
         self.indices = []
         self.data = []
-        for i in range(self.nfiles):
-            # self.files.append(uproot.open(self.filenames[i]))
-            # self.indices.append(get_indices(self.files[i]['Candidates'], self.filenames[i]))
-            # self.data.append(self.files[i]['Candidates'].pandas.df(
-            #     np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))).loc[self.indices[i]].astype(
-            #     'float32'))
-            # self.data[i] = self.pre_process(self.data[i])
+        ##Divide batch size per n-files, n-event per file
 
+        for i in range(self.nfiles):
             file = uproot.open(self.filenames[i])
             self.indices.append(get_indices(file['Candidates'], self.filenames[i]))
             if self.mode == 'train':
@@ -221,16 +218,17 @@ class TauIdDataset(Dataset):
                 self.test_data.append(self.data[i])
                 self.data[i] = self.pre_process(self.data[i])
             # print(self.data[i].memory_usage(index=True).sum())
-        # print(self.data)
-        # print(self.indices)
+
 
     @property
     def raw_file_names(self):
         return self.filenames
+
     
     @property
     def processed_file_names(self):
         return ['training.pt', 'test.pt']
+
 
     def __getitem__(self, index):
         """
@@ -238,8 +236,6 @@ class TauIdDataset(Dataset):
         :param index: Index of event to select
         :return: Pytorch tensor with features and labels for one event
         """
-        # for i in range(self.nfiles):
-        #     print(len(self.indices[i]))
         i = random.randint(0, self.nfiles - 1)
         # root_file = uproot.open(self.filenames[index])
         # root_file = self.files[i]
@@ -266,8 +262,10 @@ class TauIdDataset(Dataset):
             elif self.mode == 'test':
                 return self.get_tensor(self.data[i].loc[j], self.test_data[i].loc[j])
 
+
     def __len__(self):
         return self.len
+
 
     def reload_file(self, index):
         """
@@ -301,6 +299,7 @@ class TauIdDataset(Dataset):
             self.test_data.append(self.data[i])
             self.data[i] = self.pre_process(self.data[i])
 
+
     def norm_min_max(self, value):
         """
         Normalise given feature.
@@ -312,6 +311,7 @@ class TauIdDataset(Dataset):
         max = self.max.get(self.features[self.features == feature].index[0])
         return (value - min) / (max - min)
 
+
     def set_category(self, value):
         """
         Apply one-hot encoding to categorical feature.
@@ -319,6 +319,7 @@ class TauIdDataset(Dataset):
         :return: Dataframe with encoded feature
         """
         return  value.astype(self.cat_types[value.name])
+
 
     def get_tensor(self, df, df_test=None):
         """
@@ -381,7 +382,7 @@ class TauIdDataset(Dataset):
             data.y = torch.transpose(data.y, 0, 1)
         return data
 
-    def pre_process(self, df):
+    def pre_process(self, df, scaler=None):
         """
         Pre-process the input data.
         :param df: Dataframe with not pre-transformed features
@@ -389,11 +390,15 @@ class TauIdDataset(Dataset):
         """
         if self.mode == 'test':
             df = df[np.concatenate((FEATURES, BINARY_FEATURES, CATEGORICAL_FEATURES, TARGET))]
-        df[FEATURES] = df[FEATURES].apply(self.norm_min_max, axis=0)
+            print(df.shape)
+            print(df.head(2))
+        if scaler == 'minmax':
+            df[FEATURES] = df[FEATURES].apply(self.norm_min_max, axis=0)
         df = pd.concat([df[np.concatenate((FEATURES, BINARY_FEATURES, TARGET))],
                         pd.get_dummies(df[CATEGORICAL_FEATURES].apply(self.set_category, axis=0))], axis=1)
         df = df.fillna(0)
         return df
+
 
 
 class LoadData:
@@ -501,7 +506,6 @@ class LoadData:
         data = Data()
         data.pos = pos
         data.x = x
-
         data.y = torch.tensor(label.values, dtype=torch.int64)
         return data
 
