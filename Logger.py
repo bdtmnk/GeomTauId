@@ -32,18 +32,26 @@ class Logger:
         :return: None
         """
 
-        self.loss += Loss.item()
+        self.loss = Loss.item()
         target = labels.detach().numpy().astype(int)
         score = outputs.detach().numpy()
         prediction = np.around(score)
         sig_num = target.sum()
         bkg_num = len(target) - sig_num
         print("{0} signal events; {1} background events".format(sig_num, bkg_num))
-        self.acc += accuracy_score(target, prediction)
-        self.prec += precision_score(target, prediction)
-        self.rec += recall_score(target, prediction)
-        self.auc += roc_auc_score(target, score)
-        self.count += 1
+        self.acc = accuracy_score(target, prediction)
+        self.prec = precision_score(target, prediction)
+        self.rec = recall_score(target, prediction)
+        self.auc = roc_auc_score(target, score)
+        self.efficiency = np.sum(prediction[np.where(prediction==1)[0]])/np.sum(target[np.where(target==1)[0]])
+	self.count += 1
+	self.epoch = self.count
+        try:
+            self.log.write(
+                "Train results({5} epoch):  Loss: {0}; Acc: {1}; AUC: {2}; Precision: {3}; Recall: {4}\n Efficiency: {5}".format(self.loss, self.acc, self.auc, self.prec, self.rec, self.epoch, self.efficiency))
+        except Exception, e:
+            print(str(e))
+        self.log.flush()
 
     def save_train(self, epoch):
         """
@@ -62,22 +70,23 @@ class Logger:
         self.loss = self.acc = self.prec = self.rec = self.auc = self.count = 0
 
     def eval_test(self, epoch,  Loss, labels, outputs):
-        loss = 0
-        score = np.array([])
-        target = np.array([])
-        for i in range(len(Loss)):
-            score = np.append(score, outputs[i].detach().numpy())
-            target = np.append(target, labels[i].detach().numpy())
-            loss += Loss[i].item()
+        self.loss = Loss.item()
+        target = labels.detach().numpy().astype(int)
+        score = outputs.detach().numpy()
         prediction = np.around(score)
-        acc = accuracy_score(target, prediction)
-        prec = precision_score(target, prediction)
-        rec = recall_score(target, prediction)
-        auc = roc_auc_score(target, score)
+        sig_num = target.sum()
+        bkg_num = len(target) - sig_num
+        print("{0} signal events; {1} background events".format(sig_num, bkg_num))
+        self.acc = accuracy_score(target, prediction)
+        self.prec = precision_score(target, prediction)
+        self.rec = recall_score(target, prediction)
+        self.auc = roc_auc_score(target, score)
+        self.efficiency = np.sum(prediction[np.where(prediction==1)[0]])/np.sum(target[np.where(target==1)[0]])
+        self.epoch = epoch
         try:
             self.log.write(
-                "Test results({5} epoch):  Loss: {0}; Acc: {1}; AUC: {2}; Precision: {3}; Recall: {4}\n".format(loss / len(Loss), acc, auc, prec, rec, epoch))
-        except Exception, e:
+                "Test results({5} epoch):  Loss: {0}; Acc: {1}; AUC: {2}; Precision: {3}; Recall: {4}\n  Efficiency: {5}".format(self.loss, self.acc, self.auc, self.prec, self.rec, self.epoch, self.efficiency))        
+	except Exception, e:
             print(str(e))
         self.log.flush()
 

@@ -16,15 +16,15 @@ from torchcontrib.optim import SWA
 
 TRAIN_SET = "/pnfs/desy.de/cms/tier2/store/user/ldidukh/TauId/2016/train_samples/"
 TEST_SET = "/pnfs/desy.de/cms/tier2/store/user/ldidukh/TauId/2016/test_samples/"
-TRAINING_RES = "/nfs/dust/cms/user/dydukhle/GeomTauID/GCN_ALL_KNN_468_ECN3/"
+TRAINING_RES = "/nfs/dust/cms/user/dydukhle/GeomTauID/GCN_QCD_KNN_468_ECN3/"
 RESUME_TRAINING = False
 EPOCH = 0
-RUN_TEST = True#False
+RUN_TEST = True
 TOTAL_EPOCH = 100
-BATCH_SIZE = 4*1024
+BATCH_SIZE = 1024
 N_EVENTS = 2#50#000
-N_FILES = 8#2
-PROC = "all"#WJ all
+N_FILES = 2#2
+PROC = "QCD"#WJ all
 
 
 num_workers = 16
@@ -32,7 +32,7 @@ num_workers = 16
 config = {}
 config['lr'] = 0.5
 config['momentum'] = 0.9
-config['KNN_Number'] = 6
+config['KNN_Number'] = 4
 
 
 if __name__ == "__main__":
@@ -64,12 +64,12 @@ if __name__ == "__main__":
         print ("Model loaded")
     else:
         net = ECN3(config)
-        opt = torch.optim.Adam(net.parameters(), lr=config['lr'])#, momentum=config['momentum'])
+        opt = torch.optim.SGD(net.parameters(), lr=config['lr'], momentum=config['momentum'])
         EPOCH = 0
 
     #LR Scedule for the Optimiser
     #opt = SWA(optimizer)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(opt, 100)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(opt, 10)
     log = Logger(TRAINING_RES, 'ECN',  RESUME_TRAINING)
     torch.set_num_threads(1)
 
@@ -121,14 +121,16 @@ if __name__ == "__main__":
             log.eval_train(loss, labels, outputs)
 
             print("Epoch: ",epoch, " Efficiency:  ", train_efficiency_list[-1], "Accuracy:  ",train_accuracy_list[-1])
-            if epoch % 10 ==0:
-		scheduler.step()
+
+            if epoch % 1 ==0:
+                scheduler.step()
 		#opt.update_swa()
 		writer.add_scalar('Loss/train', train_loss_list[-1], epoch)
                 writer.add_scalar('uwLoss/train', train_loss_uw_list[-1], epoch)
                 writer.add_scalar('Accuracy/train', train_accuracy_list[-1], epoch)
                 writer.add_scalar('Efficiency/train', train_efficiency_list[-1], epoch)
-
+#		writer.add_histogram("DM/train", train_dm, bins=30, global_step=epoch)
+		writer.add_image("Position/train", data.pos.detach().numpy()[1], global_step=epoch)
                 #TODO add Efficiency and AUC:
 	#opt.swap_swa_sgd()
 	print(opt)
@@ -166,6 +168,7 @@ if __name__ == "__main__":
                     writer.add_scalar('Loss/test', loss_list[-1], epoch)
                     writer.add_scalar('Accuracy/test', test_accuracy_list[-1], epoch)
                     writer.add_scalar('Efficiency/test', test_efficiency_list[-1], epoch)
+		    writer.add_image("Position/test", data.pos.detach().numpy()[1], global_step=epoch)
             #TOTO add Rejection rate for the backgroud:
             #TODO add the unweighted loss:
             #TODO add dm and process disctirbution:
