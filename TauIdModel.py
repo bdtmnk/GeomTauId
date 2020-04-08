@@ -1,8 +1,6 @@
-""""
+"""
 Model Definition and Training Process Specification:
-""""
-
-
+"""
 from torch_geometric.data import Dataset, Data
 import torch
 import torch.nn as nn
@@ -17,20 +15,23 @@ from torch_geometric.nn.conv import MessagePassing
 
 from sklearn.metrics import accuracy_score, roc_auc_score, precision_score, recall_score
 from pandas.api.types import CategoricalDtype
-
-
-
 #Network Definition:
 
 class EdgeConv(MessagePassing):
+    """
+
+    """
     def __init__(self, nn, aggr='mean', **kwargs):
         super(EdgeConv, self).__init__(aggr=aggr, **kwargs)
         self.nn = nn
+
     def forward(self, x, edge_index):
         x = x.unsqueeze(-1) if x.dim() == 1 else x
         return self.propagate(edge_index, x=x)
+
     def message(self, x_i, x_j):
         return self.nn(torch.cat([x_i, x_j - x_i], dim=1))
+
     def __repr__(self):
         return '{}(nn={})'.format(self.__class__.__name__, self.nn)
 
@@ -46,7 +47,6 @@ def MLP(channels):
 
 class ResMLP(torch.nn.Module):
     """Class of MLP with residual connection."""
-
     def __init__(self, dim, depth):
         """
             Create MLP with residual connection of specified shape.
